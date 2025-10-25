@@ -1,4 +1,7 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../contexts/AuthContext"
+import { validateEmail } from "../utils/helpers"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -7,10 +10,8 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  const validateEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  }
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -28,8 +29,9 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      alert("Login successful!")
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      login(email, password)
+      navigate("/dashboard")
     } catch (err) {
       setError(err.message)
     } finally {
@@ -41,8 +43,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{animationDuration: '4s'}}></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{animationDuration: '6s', animationDelay: '1s'}}></div>
+        <div className="absolute top-1/2 right-1/3 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{animationDuration: '5s', animationDelay: '2s'}}></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
@@ -147,7 +150,7 @@ export default function LoginPage() {
                 </span>
               </label>
               <button 
-                onClick={(e) => {e.preventDefault(); alert('Password reset link sent!')}}
+                onClick={(e) => {e.preventDefault()}}
                 className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
               >
                 Forgot password?
@@ -199,7 +202,7 @@ export default function LoginPage() {
             <p className="text-sm text-gray-500">
               Don't have an account?{" "}
               <button 
-                onClick={(e) => {e.preventDefault(); alert('Sign up feature coming soon!')}}
+                onClick={(e) => {e.preventDefault()}}
                 className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
               >
                 Sign up
