@@ -18,7 +18,7 @@ import { validateEmail, validatePhone } from "../utils/helpers"
 
 
 export default function EnquiryBookPage() {
-  const { data, addEnquiry, addClient, updateEnquiry, addFollowUp } = useData()
+  const { data, addEnquiry, addClient, updateEnquiry, addFollowUp, updateData  } = useData()
   const { success, error } = useToast()
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -76,50 +76,70 @@ export default function EnquiryBookPage() {
   const projects = useMemo(() => {
     return data.projects.filter((p) => !p.isDeleted)
   }, [data.projects])
+// Replace your handleAddEnquiry function with this fixed version
 
-  const handleAddEnquiry = () => {
-    let clientId = form.clientId
+const handleAddEnquiry = () => {
+  let clientId = form.clientId
 
-    if (createNewClient) {
-      if (!newClient.name || !newClient.email || !newClient.mobile) {
-        error("Please fill all required client fields")
-        return
-      }
-      if (!validateEmail(newClient.email)) {
-        error("Invalid email format")
-        return
-      }
-      if (!validatePhone(newClient.mobile)) {
-        error("Mobile number must be 10 digits")
-        return
-      }
-
-      clientId = uuidv4()
-      const newClientObj = {
-        clientId,
-        clientName: newClient.name,
-        email: newClient.email,
-        mobileNumber: newClient.mobile,
-        panNo: newClient.pan,
-        aadharNo: newClient.aadhar,
-        dob: "",
-        city: "",
-        address: "",
-        occupation: "",
-        company: "",
-        createdDate: new Date().toISOString().split("T")[0],
-        isDeleted: false,
-      }
-      addClient(newClientObj)
+  if (createNewClient) {
+    if (!newClient.name || !newClient.email || !newClient.mobile) {
+      error("Please fill all required client fields")
+      return
     }
-
-    if (!clientId || !form.projectId || !form.propertyId || !form.budget) {
-      error("Please fill all required fields")
+    if (!validateEmail(newClient.email)) {
+      error("Invalid email format")
+      return
+    }
+    if (!validatePhone(newClient.mobile)) {
+      error("Mobile number must be 10 digits")
       return
     }
 
+    clientId = uuidv4()
+    const newClientObj = {
+      clientId,
+      clientName: newClient.name,
+      email: newClient.email,
+      mobileNumber: newClient.mobile,
+      panNo: newClient.pan,
+      aadharNo: newClient.aadhar,
+      dob: "",
+      city: "",
+      address: "",
+      occupation: "",
+      company: "",
+      createdDate: new Date().toISOString().split("T")[0],
+      isDeleted: false,
+    }
+    addClient(newClientObj)
+  }
+
+  if (!clientId || !form.projectId || !form.propertyId || !form.budget) {
+    error("Please fill all required fields")
+    return
+  }
+
+  if (editingId) {
     const enquiry = {
-      enquiryId: editingId || uuidv4(),
+      enquiryId: editingId,
+      projectId: form.projectId,
+      clientId: clientId,
+      propertyId: form.propertyId,
+      budget: form.budget,
+      reference: form.reference,
+      referenceName: form.referenceName,
+      remark: form.remark,
+      status: form.status,
+      createdDate: new Date().toISOString().split("T")[0],
+      isDeleted: false,
+    }
+    updateEnquiry(editingId, enquiry)
+    success("Enquiry updated successfully")
+  } else {
+    // Create both enquiry and follow-up in a single update
+    const enquiryId = uuidv4()
+    const enquiry = {
+      enquiryId: enquiryId,
       projectId: form.projectId,
       clientId: clientId,
       propertyId: form.propertyId,
@@ -132,35 +152,36 @@ export default function EnquiryBookPage() {
       isDeleted: false,
     }
 
-    if (editingId) {
-      updateEnquiry(editingId, enquiry)
-      success("Enquiry updated successfully")
-    } else {
-      const createdEnquiry = addEnquiry(enquiry)
+    const nextFollowUpDate = new Date()
+    nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 7)
+    const followUpDateStr = nextFollowUpDate.toISOString().split("T")[0]
 
-      const nextFollowUpDate = new Date()
-      nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 7)
-      const followUpDateStr = nextFollowUpDate.toISOString().split("T")[0]
-
-      const initialFollowUp = {
-        followUpId: uuidv4(),
-        enquiryId: createdEnquiry.enquiryId,
-        followUpDate: followUpDateStr,
-        followUpTime: "10:00",
-        status: "PENDING",
-        notes: "Initial follow-up created",
-        createdDate: new Date().toISOString().split("T")[0],
-        isDeleted: false,
-      }
-      addFollowUp(initialFollowUp)
-
-      success("Enquiry created successfully with initial follow-up")
+    const initialFollowUp = {
+      followUpId: uuidv4(),
+      enquiryId: enquiryId,
+      followUpDate: followUpDateStr,
+      followUpTime: "10:00",
+      status: "PENDING",
+      notes: "Initial follow-up created",
+      createdDate: new Date().toISOString().split("T")[0],
+      isDeleted: false,
     }
 
-    resetForm()
-    setShowModal(false)
+    // Add both in a single update to avoid stale data issues
+    const updated = {
+      ...data,
+      enquiries: [...(data.enquiries || []), enquiry],
+      followUps: [...(data.followUps || []), initialFollowUp],
+    }
+    
+    updateData(updated)
+    success("Enquiry created successfully with initial follow-up")
   }
 
+  resetForm()
+  setShowModal(false)
+}
+  
   const handleAddRemark = () => {
     if (!remarkText.trim()) {
       error("Please enter a remark")
@@ -316,146 +337,234 @@ export default function EnquiryBookPage() {
         </Card>
 
         {/* Add/Edit Enquiry Modal */}
+        {/* Add/Edit Enquiry Modal - Two Column Layout */}
         <Modal
           isOpen={showModal}
           onClose={() => {
             setShowModal(false)
             resetForm()
           }}
-          title={editingId ? "Edit Enquiry" : "Add Enquiry"}
-          size="lg"
-        >
-          <div className="space-y-4">
-            {!createNewClient ? (
-              <FormSelect
-                label="Select Client"
-                value={form.clientId}
-                onChange={(e) => setForm({ ...form, clientId: e.target.value })}
-                options={data.clients
-                  .filter((c) => !c.isDeleted)
-                  .map((c) => ({ value: c.clientId, label: c.clientName }))}
-                required
-              />
-            ) : (
-              <>
-                <FormInput
-                  label="Client Name"
-                  value={newClient.name}
-                  onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                  required
-                />
-                <FormInput
-                  label="Email"
-                  type="email"
-                  value={newClient.email}
-                  onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                  required
-                />
-                <FormInput
-                  label="Mobile Number"
-                  value={newClient.mobile}
-                  onChange={(e) => setNewClient({ ...newClient, mobile: e.target.value })}
-                  required
-                />
-                <FormInput
-                  label="PAN"
-                  value={newClient.pan}
-                  onChange={(e) => setNewClient({ ...newClient, pan: e.target.value })}
-                />
-                <FormInput
-                  label="Aadhar"
-                  value={newClient.aadhar}
-                  onChange={(e) => setNewClient({ ...newClient, aadhar: e.target.value })}
-                />
-              </>
-            )}
+          title={editingId ? "Edit Enquiry" : "Add New Enquiry"}
+          type={editingId ? "info" : "default"}
+          size="5xl"
+          variant="form"
+          scrollBehavior="outside"
+          twoColumn={true}
+          columnGap="lg"
+          showSectionDividers={false}
+          leftColumn={
+            <div className="space-y-6">
+              {/* Client Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">Client Information</h3>
+                </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="newClient"
-                checked={createNewClient}
-                onChange={(e) => setCreateNewClient(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-600"
-              />
-              <label htmlFor="newClient" className="text-sm text-gray-700">
-                Create New Client
-              </label>
+                {!createNewClient ? (
+                  <FormSelect
+                    label="Select Client"
+                    value={form.clientId}
+                    onChange={(e) => setForm({ ...form, clientId: e.target.value })}
+                    options={data.clients
+                      .filter((c) => !c.isDeleted)
+                      .map((c) => ({ value: c.clientId, label: c.clientName }))}
+                    required
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <FormInput
+                      label="Client Name"
+                      value={newClient.name}
+                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormInput
+                        label="Email"
+                        type="email"
+                        value={newClient.email}
+                        onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                        required
+                      />
+                      <FormInput
+                        label="Mobile"
+                        value={newClient.mobile}
+                        onChange={(e) => setNewClient({ ...newClient, mobile: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormInput
+                        label="PAN"
+                        value={newClient.pan}
+                        onChange={(e) => setNewClient({ ...newClient, pan: e.target.value })}
+                      />
+                      <FormInput
+                        label="Aadhar"
+                        value={newClient.aadhar}
+                        onChange={(e) => setNewClient({ ...newClient, aadhar: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200">
+                  <input
+                    type="checkbox"
+                    id="newClient"
+                    checked={createNewClient}
+                    onChange={(e) => setCreateNewClient(e.target.checked)}
+                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-600"
+                  />
+                  <label htmlFor="newClient" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    Create New Client
+                  </label>
+                </div>
+              </div>
+
+              {/* Property Section */}
+              <div className="pt-6 border-t border-gray-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">Property Details</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <FormSelect
+                    label="Project"
+                    value={form.projectId}
+                    onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+                    options={projects.map((p) => ({ value: p.projectId, label: p.projectName }))}
+                    required
+                  />
+
+                  {form.projectId && (
+                    <FormSelect
+                      label="Unit"
+                      value={form.propertyId}
+                      onChange={(e) => setForm({ ...form, propertyId: e.target.value })}
+                      options={data.flats
+                        .filter((f) => f.projectId === form.projectId && f.status === "VACANT" && !f.isDeleted)
+                        .map((f) => ({ value: f.propertyId, label: f.unitNumber }))}
+                      required
+                    />
+                  )}
+                </div>
+              </div>
             </div>
+          }
+          rightColumn={
+            <div className="space-y-6">
+              {/* Enquiry Details */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">Enquiry Details</h3>
+                </div>
 
-            <FormSelect
-              label="Project"
-              value={form.projectId}
-              onChange={(e) => setForm({ ...form, projectId: e.target.value })}
-              options={projects.map((p) => ({ value: p.projectId, label: p.projectName }))}
-              required
-            />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormInput
+                      label="Budget"
+                      value={form.budget}
+                      onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                      required
+                    />
 
-            {form.projectId && (
-              <FormSelect
-                label="Unit"
-                value={form.propertyId}
-                onChange={(e) => setForm({ ...form, propertyId: e.target.value })}
-                options={data.flats
-                  .filter((f) => f.projectId === form.projectId && f.status === "VACANT" && !f.isDeleted)
-                  .map((f) => ({ value: f.propertyId, label: f.unitNumber }))}
-                required
-              />
-            )}
+                    <FormSelect
+                      label="Status"
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value })}
+                      options={[
+                        { value: "ONGOING", label: "Ongoing" },
+                        { value: "COMPLETED", label: "Completed" },
+                        { value: "CANCELLED", label: "Cancelled" },
+                      ]}
+                    />
+                  </div>
 
-            <FormInput
-              label="Budget"
-              value={form.budget}
-              onChange={(e) => setForm({ ...form, budget: e.target.value })}
-              required
-            />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormInput
+                      label="Reference"
+                      value={form.reference}
+                      onChange={(e) => setForm({ ...form, reference: e.target.value })}
+                    />
 
-            <FormInput
-              label="Reference"
-              value={form.reference}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })}
-            />
+                    <FormInput
+                      label="Reference Name"
+                      value={form.referenceName}
+                      onChange={(e) => setForm({ ...form, referenceName: e.target.value })}
+                    />
+                  </div>
 
-            <FormInput
-              label="Reference Name"
-              value={form.referenceName}
-              onChange={(e) => setForm({ ...form, referenceName: e.target.value })}
-            />
+                  <FormTextarea
+                    label="Remark"
+                    value={form.remark}
+                    onChange={(e) => setForm({ ...form, remark: e.target.value })}
+                    rows={4}
+                    placeholder="Add any additional notes or remarks..."
+                  />
+                </div>
+              </div>
 
-            <FormSelect
-              label="Status"
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              options={[
-                { value: "ONGOING", label: "Ongoing" },
-                { value: "COMPLETED", label: "Completed" },
-                { value: "CANCELLED", label: "Cancelled" },
-              ]}
-            />
-
-            <FormTextarea
-              label="Remark"
-              value={form.remark}
-              onChange={(e) => setForm({ ...form, remark: e.target.value })}
-              rows={3}
-            />
-
-            <div className="flex gap-2 justify-end pt-4">
-              <Button
+              {/* Summary Card - Only show when editing */}
+              {editingId && (
+                <div className="pt-6 border-t border-gray-200">
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Enquiry Summary
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Created Date</span>
+                        <span className="font-medium text-gray-900">{selectedEnquiry?.createdDate || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Current Status</span>
+                        <Badge status={form.status}>{form.status}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          }
+          footer={
+            <div className="flex gap-3 justify-end">
+              <button
                 onClick={() => {
                   setShowModal(false)
                   resetForm()
                 }}
-                variant="secondary"
+                className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Cancel
-              </Button>
-              <Button onClick={handleAddEnquiry} variant="primary">
+              </button>
+              <button
+                onClick={handleAddEnquiry}
+                className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+              >
                 {editingId ? "Update" : "Create"} Enquiry
-              </Button>
+              </button>
             </div>
-          </div>
-        </Modal>
+          }
+        />   
 
         {/* Add Remark Modal */}
         <Modal isOpen={showRemarkModal} onClose={() => setShowRemarkModal(false)} title="Add Remark">
@@ -475,6 +584,7 @@ export default function EnquiryBookPage() {
             </Button>
           </div>
         </Modal>
+        
       </div>
     </AppLayout>
   )

@@ -1,5 +1,3 @@
-"use client"
-
 import React, { createContext, useState, useEffect } from "react"
 import { seedData } from "../data/seedData"
 
@@ -23,6 +21,10 @@ export const DataProvider = ({ children }) => {
   }, [])
 
   const updateData = (newData) => {
+    console.log("=== DataContext: Updating data ===", {
+      oldEnquiries: data.enquiries?.length,
+      newEnquiries: newData.enquiries?.length
+    })
     setData(newData)
     localStorage.setItem("propease_data", JSON.stringify(newData))
   }
@@ -55,12 +57,16 @@ export const DataProvider = ({ children }) => {
 
   // Client operations
   const addClient = (client) => {
+    const clientWithDate = {
+      ...client,
+      createdDate: client.createdDate || new Date().toISOString().split("T")[0],
+    }
     const updated = {
       ...data,
-      clients: [...data.clients, client],
+      clients: [...data.clients, clientWithDate],
     }
     updateData(updated)
-    return client
+    return clientWithDate
   }
 
   const updateClient = (clientId, updates) => {
@@ -73,10 +79,14 @@ export const DataProvider = ({ children }) => {
 
   // Enquiry operations
   const addEnquiry = (enquiry) => {
+    console.log("=== addEnquiry called ===", enquiry)
+    const newEnquiries = [...(data.enquiries || []), enquiry]
     const updated = {
       ...data,
-      enquiries: [...data.enquiries, enquiry],
+      enquiries: newEnquiries,
     }
+    console.log("=== Enquiries before update ===", data.enquiries?.length)
+    console.log("=== Enquiries after update ===", newEnquiries.length)
     updateData(updated)
     return enquiry
   }
@@ -218,116 +228,24 @@ export const DataProvider = ({ children }) => {
       value={{
         data,
         updateData,
-        addProject: (project) => {
-          const updated = { ...data, projects: [...data.projects, project] }
-          updateData(updated)
-          return project
-        },
-        updateProject: (projectId, updates) => {
-          const updated = {
-            ...data,
-            projects: data.projects.map((p) => (p.projectId === projectId ? { ...p, ...updates } : p)),
-          }
-          updateData(updated)
-        },
-        deleteProject: (projectId) => {
-          const updated = {
-            ...data,
-            projects: data.projects.map((p) => (p.projectId === projectId ? { ...p, isDeleted: true } : p)),
-          }
-          updateData(updated)
-        },
-        addClient: (client) => {
-          const clientWithDate = {
-            ...client,
-            createdDate: client.createdDate || new Date().toISOString().split("T")[0],
-          }
-          const updated = { ...data, clients: [...data.clients, clientWithDate] }
-          updateData(updated)
-          return clientWithDate
-        },
-        updateClient: (clientId, updates) => {
-          const updated = {
-            ...data,
-            clients: data.clients.map((c) => (c.clientId === clientId ? { ...c, ...updates } : c)),
-          }
-          updateData(updated)
-        },
-        addEnquiry: (enquiry) => {
-          const updated = { ...data, enquiries: [...data.enquiries, enquiry] }
-          updateData(updated)
-          return enquiry
-        },
-        updateEnquiry: (enquiryId, updates) => {
-          const updated = {
-            ...data,
-            enquiries: data.enquiries.map((e) => (e.enquiryId === enquiryId ? { ...e, ...updates } : e)),
-          }
-          updateData(updated)
-        },
-        addBooking: (booking) => {
-          const updated = { ...data, bookings: [...data.bookings, booking] }
-          updateData(updated)
-          return booking
-        },
-        updateBooking: (bookingId, updates) => {
-          const updated = {
-            ...data,
-            bookings: data.bookings.map((b) => (b.bookingId === bookingId ? { ...b, ...updates } : b)),
-          }
-          updateData(updated)
-        },
-        updateFlat: (propertyId, updates) => {
-          const updated = {
-            ...data,
-            flats: data.flats.map((f) => (f.propertyId === propertyId ? { ...f, ...updates } : f)),
-          }
-          updateData(updated)
-        },
-        addWing: (wing) => {
-          const updated = { ...data, wings: [...data.wings, wing] }
-          updateData(updated)
-          return wing
-        },
-        addFloor: (floor) => {
-          const updated = { ...data, floors: [...data.floors, floor] }
-          updateData(updated)
-          return floor
-        },
-        addFlat: (flat) => {
-          const updated = { ...data, flats: [...data.flats, flat] }
-          updateData(updated)
-          return flat
-        },
-        addDisbursement: (disbursement) => {
-          const updated = { ...data, disbursements: [...data.disbursements, disbursement] }
-          updateData(updated)
-          return disbursement
-        },
-        addBankDetail: (bankDetail) => {
-          const updated = { ...data, bankDetails: [...data.bankDetails, bankDetail] }
-          updateData(updated)
-          return bankDetail
-        },
-        addDocument: (document) => {
-          const updated = { ...data, documents: [...data.documents, document] }
-          updateData(updated)
-          return document
-        },
-        addNotification: (notification) => {
-          const updated = { ...data, notifications: [...data.notifications, notification] }
-          updateData(updated)
-          return notification
-        },
-        markNotificationRead: (notificationId) => {
-          const updated = {
-            ...data,
-            notifications: data.notifications.map((n) =>
-              n.notificationId === notificationId ? { ...n, isRead: true } : n,
-            ),
-          }
-          updateData(updated)
-        },
+        addProject,
+        updateProject,
+        deleteProject,
+        addClient,
+        updateClient,
+        addEnquiry,
+        updateEnquiry,
+        addBooking,
+        updateBooking,
+        updateFlat,
+        addWing,
+        addFloor,
+        addFlat,
+        addDisbursement,
+        addBankDetail,
+        addDocument,
+        addNotification,
+        markNotificationRead,
         addFollowUp,
         addFollowUpNode,
       }}

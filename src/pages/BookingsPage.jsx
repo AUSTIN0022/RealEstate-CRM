@@ -4,29 +4,36 @@ import { useToast } from "../components/ui/Toast"
 import { AppLayout } from "../components/layout/AppLayout"
 
 import { Card } from "../components/ui/Card"
-import { Button  } from "../components/ui/Button"
+import { Button } from "../components/ui/Button"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
 import { Drawer } from "../components/ui/Drawer"
 import { Badge } from "../components/ui/Badge"
+import { Modal, ModalSection, ModalSummaryCard } from "../components/ui/Modal"
 
 import { v4 as uuidv4 } from "uuid"
 import { FLAT_STATUS } from "../utils/constants"
 import { formatCurrency } from "../utils/helpers"
 
-// Import icons (assuming lucide-react is available)
-import { X, Building2, User, CreditCard, FileText } from "lucide-react"
+import { Building2, User, CreditCard, FileText } from "lucide-react"
 
 export default function BookingsPage() {
   const { data, addBooking, updateFlat, updateEnquiry, addClient } = useData()
   const { success, error } = useToast()
+  
+  // State for main page filters
   const [selectedProject, setSelectedProject] = useState("")
   const [selectedWing, setSelectedWing] = useState("")
   const [selectedUnit, setSelectedUnit] = useState(null)
   const [showDrawer, setShowDrawer] = useState(false)
   const [activeTab, setActiveTab] = useState("book")
+  
+  // State for Add Booking Modal
   const [showAddBookingModal, setShowAddBookingModal] = useState(false)
   const [createNewClient, setCreateNewClient] = useState(false)
+  const [modalSelectedProject, setModalSelectedProject] = useState("")
+  const [modalSelectedWing, setModalSelectedWing] = useState("")
+  const [selectedFlatForBooking, setSelectedFlatForBooking] = useState(null)
 
   // Booking form
   const [bookingForm, setBookingForm] = useState({
@@ -45,9 +52,6 @@ export default function BookingsPage() {
     email: "",
     mobileNumber: "",
   })
-
-  // Flat selection for modal
-  const [selectedFlatForBooking, setSelectedFlatForBooking] = useState(null)
 
   // Registration form
   const [registrationForm, setRegistrationForm] = useState({
@@ -77,6 +81,18 @@ export default function BookingsPage() {
     if (!selectedWing) return []
     return data.flats.filter((f) => f.wingId === selectedWing && !f.isDeleted)
   }, [data.flats, selectedWing])
+
+  // Modal specific wings based on modalSelectedProject
+  const modalWings = useMemo(() => {
+    if (!modalSelectedProject) return []
+    return data.wings.filter((w) => w.projectId === modalSelectedProject && !w.isDeleted)
+  }, [data.wings, modalSelectedProject])
+
+  // Modal specific flats based on modalSelectedWing
+  const modalFlats = useMemo(() => {
+    if (!modalSelectedWing) return []
+    return data.flats.filter((f) => f.wingId === modalSelectedWing && !f.isDeleted)
+  }, [data.flats, modalSelectedWing])
 
   const clients = useMemo(() => {
     return data.clients.filter((c) => !c.isDeleted)
@@ -143,7 +159,7 @@ export default function BookingsPage() {
 
     const booking = {
       bookingId: uuidv4(),
-      projectId: selectedProject,
+      projectId: modalSelectedProject,
       clientId: clientId,
       propertyId: selectedFlatForBooking.propertyId,
       enquiryId: bookingForm.enquiryId || null,
@@ -187,6 +203,8 @@ export default function BookingsPage() {
     })
     setSelectedFlatForBooking(null)
     setCreateNewClient(false)
+    setModalSelectedProject("")
+    setModalSelectedWing("")
   }
 
   const handleBookUnit = () => {
@@ -295,6 +313,24 @@ export default function BookingsPage() {
   const getBookingForUnit = (propertyId) => {
     return data.bookings.find((b) => b.propertyId === propertyId && !b.isDeleted)
   }
+
+  // Calculate summary items for modal
+  const summaryItems = [
+    {
+      label: "Booking Amount:",
+      value: bookingForm.bookingAmount ? `₹${Number(bookingForm.bookingAmount).toLocaleString('en-IN')}` : '—'
+    },
+    {
+      label: "Agreement Amount:",
+      value: bookingForm.agreementAmount ? `₹${Number(bookingForm.agreementAmount).toLocaleString('en-IN')}` : '—'
+    },
+    ...(bookingForm.gstPercentage && bookingForm.agreementAmount ? [{
+      label: `GST (${bookingForm.gstPercentage}%):`,
+      value: `₹${((Number(bookingForm.agreementAmount) * Number(bookingForm.gstPercentage)) / 100).toLocaleString('en-IN')}`,
+      highlight: true,
+      divider: true
+    }] : [])
+  ]
 
   return (
     <AppLayout>
@@ -617,329 +653,262 @@ export default function BookingsPage() {
           )}
         </Drawer>
 
-        {/* Modern Add Booking Modal */}
-        {showAddBookingModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl animate-fadeIn">
-              {/* Header */}
-              <div className="px-8 py-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-white rounded-t-2xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-white" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900">Create New Booking</h2>
+        {/* Add Booking Modal - Using Modal Component */}
+        <Modal
+          isOpen={showAddBookingModal}
+          onClose={() => {
+            setShowAddBookingModal(false)
+            resetAddBookingForm()
+          }}
+          title="Create New Booking"
+          headerIcon={FileText}
+          size="5xl"
+          variant="form"
+          twoColumn={true}
+          columnGap="lg"
+          leftColumn={
+            <>
+              {/* Property Details Section */}
+              <ModalSection title="Property Details" icon={Building2}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={modalSelectedProject}
+                    onChange={(e) => {
+                      setModalSelectedProject(e.target.value)
+                      setModalSelectedWing("")
+                      setSelectedFlatForBooking(null)
+                    }}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map((p) => (
+                      <option key={p.projectId} value={p.projectId}>
+                        {p.projectName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowAddBookingModal(false)
-                    resetAddBookingForm()
-                  }}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              {/* Content - Two Column Layout */}
-              <div className="px-8 py-6">
-                <div className="grid grid-cols-2 gap-8">
-                  {/* Left Column - Property Details */}
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-                      <Building2 className="w-4 h-4 text-indigo-600" />
-                      <span>Property Details</span>
-                    </div>
-
-                    {/* Project Selection */}
+                {modalSelectedProject && (
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Project <span className="text-red-500">*</span>
+                        Wing <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={selectedProject}
+                        value={modalSelectedWing}
                         onChange={(e) => {
-                          setSelectedProject(e.target.value)
-                          setSelectedWing("")
+                          setModalSelectedWing(e.target.value)
                           setSelectedFlatForBooking(null)
                         }}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
                       >
-                        <option value="">Select Project</option>
-                        {projects.map((p) => (
-                          <option key={p.projectId} value={p.projectId}>
-                            {p.projectName}
+                        <option value="">Wing</option>
+                        {modalWings.map((w) => (
+                          <option key={w.wingId} value={w.wingId}>
+                            {w.wingName}
                           </option>
                         ))}
                       </select>
                     </div>
-
-                    {/* Wing & Flat in Row */}
-                    {selectedProject && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Wing <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={selectedWing}
-                            onChange={(e) => {
-                              setSelectedWing(e.target.value)
-                              setSelectedFlatForBooking(null)
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
-                          >
-                            <option value="">Wing</option>
-                            {wings.map((w) => (
-                              <option key={w.wingId} value={w.wingId}>
-                                {w.wingName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Flat <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={selectedFlatForBooking?.propertyId || ""}
-                            onChange={(e) => {
-                              const flat = flats.find((f) => f.propertyId === e.target.value)
-                              setSelectedFlatForBooking(flat)
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
-                          >
-                            <option value="">Unit</option>
-                            {flats
-                              .filter((f) => f.status === FLAT_STATUS.VACANT)
-                              .map((f) => (
-                                <option key={f.propertyId} value={f.propertyId}>
-                                  {f.unitNumber} - {f.bhk}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Client Section */}
-                    <div className="pt-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-                        <User className="w-4 h-4 text-indigo-600" />
-                        <span>Client Information</span>
-                      </div>
-
-                      {!createNewClient ? (
-                        <div className="space-y-3">
-                          <select
-                            value={bookingForm.clientId}
-                            onChange={(e) => setBookingForm({ ...bookingForm, clientId: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
-                          >
-                            <option value="">Select Client</option>
-                            {clients.map((c) => (
-                              <option key={c.clientId} value={c.clientId}>
-                                {c.clientName} - {c.mobileNumber}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => {
-                              setCreateNewClient(true)
-                              setBookingForm({ ...bookingForm, clientId: "" })
-                            }}
-                            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
-                          >
-                            <span className="text-lg">+</span> Create New Client
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3 p-4 bg-gradient-to-br from-gray-50 to-indigo-50 rounded-xl border border-indigo-100">
-                          <input
-                            type="text"
-                            value={newClientForm.clientName}
-                            onChange={(e) => setNewClientForm({ ...newClientForm, clientName: e.target.value })}
-                            placeholder="Client Name"
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
-                          />
-                          <input
-                            type="tel"
-                            value={newClientForm.mobileNumber}
-                            onChange={(e) => setNewClientForm({ ...newClientForm, mobileNumber: e.target.value })}
-                            placeholder="Mobile Number"
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
-                          />
-                          <input
-                            type="email"
-                            value={newClientForm.email}
-                            onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })}
-                            placeholder="Email Address"
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
-                          />
-                          <button
-                            onClick={() => setCreateNewClient(false)}
-                            className="text-sm text-gray-600 hover:text-gray-700 font-medium flex items-center gap-1"
-                          >
-                            ← Use Existing Client
-                          </button>
-                        </div>
-                      )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Flat <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedFlatForBooking?.propertyId || ""}
+                        onChange={(e) => {
+                          const flat = modalFlats.find((f) => f.propertyId === e.target.value)
+                          setSelectedFlatForBooking(flat)
+                        }}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                      >
+                        <option value="">Unit</option>
+                        {modalFlats
+                          .filter((f) => f.status === FLAT_STATUS.VACANT)
+                          .map((f) => (
+                            <option key={f.propertyId} value={f.propertyId}>
+                              {f.unitNumber} - {f.bhk}
+                            </option>
+                          ))}
+                      </select>
                     </div>
                   </div>
+                )}
+              </ModalSection>
 
-                  {/* Right Column - Financial Details */}
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-                      <CreditCard className="w-4 h-4 text-indigo-600" />
-                      <span>Financial Details</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Booking Amount <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={bookingForm.bookingAmount}
-                          onChange={(e) => setBookingForm({ ...bookingForm, bookingAmount: e.target.value })}
-                          placeholder="50,000"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Agreement Amount <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={bookingForm.agreementAmount}
-                          onChange={(e) => setBookingForm({ ...bookingForm, agreementAmount: e.target.value })}
-                          placeholder="50,00,000"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Booking Date</label>
-                        <input
-                          type="date"
-                          value={bookingForm.bookingDate}
-                          onChange={(e) => setBookingForm({ ...bookingForm, bookingDate: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Cheque Number</label>
-                        <input
-                          type="text"
-                          value={bookingForm.chequeNo}
-                          onChange={(e) => setBookingForm({ ...bookingForm, chequeNo: e.target.value })}
-                          placeholder="CH123456"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">GST Percentage</label>
-                        <input
-                          type="number"
-                          value={bookingForm.gstPercentage}
-                          onChange={(e) => setBookingForm({ ...bookingForm, gstPercentage: e.target.value })}
-                          placeholder="18"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Link Enquiry</label>
-                        <select
-                          value={bookingForm.enquiryId}
-                          onChange={(e) => setBookingForm({ ...bookingForm, enquiryId: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
-                        >
-                          <option value="">Optional</option>
-                          {enquiries.map((e) => {
-                            const client = data.clients.find((c) => c.clientId === e.clientId)
-                            return (
-                              <option key={e.enquiryId} value={e.enquiryId}>
-                                {client?.clientName} - {e.budget}
-                              </option>
-                            )
-                          })}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Summary Card */}
-                    <div className="mt-6 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Booking Summary</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Booking Amount:</span>
-                          <span className="font-semibold text-gray-900">
-                            {bookingForm.bookingAmount ? `₹${Number(bookingForm.bookingAmount).toLocaleString('en-IN')}` : '—'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Agreement Amount:</span>
-                          <span className="font-semibold text-gray-900">
-                            {bookingForm.agreementAmount ? `₹${Number(bookingForm.agreementAmount).toLocaleString('en-IN')}` : '—'}
-                          </span>
-                        </div>
-                        {bookingForm.gstPercentage && bookingForm.agreementAmount && (
-                          <div className="flex justify-between pt-2 border-t border-indigo-200">
-                            <span className="text-gray-600">GST ({bookingForm.gstPercentage}%):</span>
-                            <span className="font-semibold text-indigo-600">
-                              ₹{((Number(bookingForm.agreementAmount) * Number(bookingForm.gstPercentage)) / 100).toLocaleString('en-IN')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+              {/* Client Information Section */}
+              <ModalSection title="Client Information" icon={User}>
+                {!createNewClient ? (
+                  <div className="space-y-3">
+                    <select
+                      value={bookingForm.clientId}
+                      onChange={(e) => setBookingForm({ ...bookingForm, clientId: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                    >
+                      <option value="">Select Client</option>
+                      {clients.map((c) => (
+                        <option key={c.clientId} value={c.clientId}>
+                          {c.clientName} - {c.mobileNumber}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        setCreateNewClient(true)
+                        setBookingForm({ ...bookingForm, clientId: "" })
+                      }}
+                      className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                    >
+                      <span className="text-lg">+</span> Create New Client
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-4 bg-gradient-to-br from-gray-50 to-indigo-50 rounded-xl border border-indigo-100">
+                    <input
+                      type="text"
+                      value={newClientForm.clientName}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, clientName: e.target.value })}
+                      placeholder="Client Name"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                    />
+                    <input
+                      type="tel"
+                      value={newClientForm.mobileNumber}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, mobileNumber: e.target.value })}
+                      placeholder="Mobile Number"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                    />
+                    <input
+                      type="email"
+                      value={newClientForm.email}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })}
+                      placeholder="Email Address"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                    />
+                    <button
+                      onClick={() => setCreateNewClient(false)}
+                      className="text-sm text-gray-600 hover:text-gray-700 font-medium flex items-center gap-1"
+                    >
+                      ← Use Existing Client
+                    </button>
+                  </div>
+                )}
+              </ModalSection>
+            </>
+          }
+          rightColumn={
+            <>
+              {/* Financial Details Section */}
+              <ModalSection title="Financial Details" icon={CreditCard}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Booking Amount <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={bookingForm.bookingAmount}
+                      onChange={(e) => setBookingForm({ ...bookingForm, bookingAmount: e.target.value })}
+                      placeholder="50,000"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Agreement Amount <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={bookingForm.agreementAmount}
+                      onChange={(e) => setBookingForm({ ...bookingForm, agreementAmount: e.target.value })}
+                      placeholder="50,00,000"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
                   </div>
                 </div>
-              </div>
 
-              {/* Footer Actions */}
-              <div className="px-8 py-5 border-t border-gray-200 flex gap-3 bg-gray-50 rounded-b-2xl">
-                <button
-                  onClick={() => {
-                    setShowAddBookingModal(false)
-                    resetAddBookingForm()
-                  }}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddBookingFromModal}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg shadow-indigo-500/30"
-                >
-                  Create Booking
-                </button>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Booking Date</label>
+                    <input
+                      type="date"
+                      value={bookingForm.bookingDate}
+                      onChange={(e) => setBookingForm({ ...bookingForm, bookingDate: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Cheque Number</label>
+                    <input
+                      type="text"
+                      value={bookingForm.chequeNo}
+                      onChange={(e) => setBookingForm({ ...bookingForm, chequeNo: e.target.value })}
+                      placeholder="CH123456"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">GST Percentage</label>
+                    <input
+                      type="number"
+                      value={bookingForm.gstPercentage}
+                      onChange={(e) => setBookingForm({ ...bookingForm, gstPercentage: e.target.value })}
+                      placeholder="18"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Link Enquiry</label>
+                    <select
+                      value={bookingForm.enquiryId}
+                      onChange={(e) => setBookingForm({ ...bookingForm, enquiryId: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                    >
+                      <option value="">Optional</option>
+                      {enquiries.map((e) => {
+                        const client = data.clients.find((c) => c.clientId === e.clientId)
+                        return (
+                          <option key={e.enquiryId} value={e.enquiryId}>
+                            {client?.clientName} - {e.budget}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Summary Card */}
+                <ModalSummaryCard title="Booking Summary" items={summaryItems} className="mt-6" />
+              </ModalSection>
+            </>
+          }
+          footer={
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAddBookingModal(false)
+                  resetAddBookingForm()
+                }}
+                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddBookingFromModal}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg shadow-indigo-500/30"
+              >
+                Create Booking
+              </button>
             </div>
-
-            <style>{`
-              @keyframes fadeIn {
-                from {
-                  opacity: 0;
-                  transform: scale(0.95);
-                }
-                to {
-                  opacity: 1;
-                  transform: scale(1);
-                }
-              }
-              .animate-fadeIn {
-                animation: fadeIn 0.2s ease-out;
-              }
-            `}</style>
-          </div>
-        )}
+          }
+        />
       </div>
     </AppLayout>
   )

@@ -1,4 +1,4 @@
-"use client"
+
 
 import { useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
@@ -11,7 +11,7 @@ import { Card } from "../components/ui/Card"
 import { Tabs } from "../components/ui/Tabs"
 import { Table } from "../components/ui/Table"
 import { Button } from "../components/ui/Button"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, User, Briefcase, FileText, MapPin } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { validateEmail, validatePhone, validatePAN, validateAadhar } from "../utils/helpers"
 
@@ -86,6 +86,7 @@ export default function ClientsPage() {
       addClient({
         clientId: uuidv4(),
         ...form,
+        createdDate: new Date().toISOString().split("T")[0],
         isDeleted: false,
       })
       success("Client created successfully")
@@ -169,96 +170,196 @@ export default function ClientsPage() {
           />
         </Card>
 
-        {/* Add/Edit Client Modal */}
+        {/* Add/Edit Client Modal - Two Column Layout */}
         <Modal
           isOpen={showModal}
           onClose={() => {
             setShowModal(false)
             resetForm()
           }}
-          title={editingId ? "Edit Client" : "Add Client"}
-          size="lg"
-        >
-          <div className="space-y-4">
-            <FormInput
-              label="Client Name"
-              value={form.clientName}
-              onChange={(e) => setForm({ ...form, clientName: e.target.value })}
-              required
-            />
+          title={editingId ? "Edit Client" : "Add New Client"}
+          type={editingId ? "info" : "default"}
+          size="4xl"
+          variant="form"
+          scrollBehavior="outside"
+          twoColumn={true}
+          columnGap="lg"
+          leftColumn={
+            <div className="space-y-6">
+              {/* Personal Information */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <User className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">Personal Information</h3>
+                </div>
 
-            <FormInput
-              label="Email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
+                <div className="space-y-4">
+                  <FormInput
+                    label="Client Name"
+                    value={form.clientName}
+                    onChange={(e) => setForm({ ...form, clientName: e.target.value })}
+                    required
+                  />
 
-            <FormInput
-              label="Mobile Number"
-              value={form.mobileNumber}
-              onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
-              required
-            />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormInput
+                      label="Email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      required
+                    />
 
-            <FormInput
-              label="Date of Birth"
-              type="date"
-              value={form.dob}
-              onChange={(e) => setForm({ ...form, dob: e.target.value })}
-            />
+                    <FormInput
+                      label="Mobile Number"
+                      value={form.mobileNumber}
+                      onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
+                      required
+                    />
+                  </div>
 
-            <FormInput label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                  <FormInput
+                    label="Date of Birth"
+                    type="date"
+                    value={form.dob}
+                    onChange={(e) => setForm({ ...form, dob: e.target.value })}
+                  />
+                </div>
+              </div>
 
-            <FormInput
-              label="Address"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-            />
+              {/* Address Information */}
+              <div className="pt-6 border-t border-gray-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">Address Details</h3>
+                </div>
 
-            <FormInput
-              label="Occupation"
-              value={form.occupation}
-              onChange={(e) => setForm({ ...form, occupation: e.target.value })}
-            />
+                <div className="space-y-4">
+                  <FormInput
+                    label="City"
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  />
 
-            <FormInput
-              label="Company"
-              value={form.company}
-              onChange={(e) => setForm({ ...form, company: e.target.value })}
-            />
+                  <FormInput
+                    label="Address"
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          }
+          rightColumn={
+            <div className="space-y-6">
+              {/* Professional Information */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <Briefcase className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">Professional Details</h3>
+                </div>
 
-            <FormInput
-              label="PAN Number"
-              value={form.panNo}
-              onChange={(e) => setForm({ ...form, panNo: e.target.value })}
-              placeholder="ABCDE1234F"
-            />
+                <div className="space-y-4">
+                  <FormInput
+                    label="Occupation"
+                    value={form.occupation}
+                    onChange={(e) => setForm({ ...form, occupation: e.target.value })}
+                  />
 
-            <FormInput
-              label="Aadhar Number"
-              value={form.aadharNo}
-              onChange={(e) => setForm({ ...form, aadharNo: e.target.value })}
-              placeholder="123456789012"
-            />
+                  <FormInput
+                    label="Company"
+                    value={form.company}
+                    onChange={(e) => setForm({ ...form, company: e.target.value })}
+                  />
+                </div>
+              </div>
 
-            <div className="flex gap-2 justify-end pt-4">
+              {/* Document Information */}
+              <div className="pt-6 border-t border-gray-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">Document Details</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <FormInput
+                    label="PAN Number"
+                    value={form.panNo}
+                    onChange={(e) => setForm({ ...form, panNo: e.target.value.toUpperCase() })}
+                    placeholder="ABCDE1234F"
+                  />
+
+                  <FormInput
+                    label="Aadhar Number"
+                    value={form.aadharNo}
+                    onChange={(e) => setForm({ ...form, aadharNo: e.target.value })}
+                    placeholder="123456789012"
+                  />
+                </div>
+
+                <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <p className="text-xs text-blue-700">
+                    <span className="font-semibold">Note:</span> Document details are optional but recommended for compliance purposes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Summary Card - Only show when editing */}
+              {editingId && (
+                <div className="pt-6 border-t border-gray-200">
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Client Summary
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Client ID</span>
+                        <span className="font-medium text-gray-900 font-mono text-xs">{editingId.slice(0, 8)}...</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Created</span>
+                        <span className="font-medium text-gray-900">
+                          {data.clients.find(c => c.clientId === editingId)?.createdDate || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          }
+          footer={
+            <div className="flex gap-3 justify-end">
               <Button
                 onClick={() => {
                   setShowModal(false)
                   resetForm()
                 }}
-                variant="secondary"
+                variant="outline"
+                size="md"
               >
                 Cancel
               </Button>
-              <Button onClick={handleAddClient} variant="primary">
+              <Button
+                onClick={handleAddClient}
+                size="md"
+              >
                 {editingId ? "Update" : "Create"} Client
               </Button>
             </div>
-          </div>
-        </Modal>
+          }
+        />
       </div>
     </AppLayout>
   )
