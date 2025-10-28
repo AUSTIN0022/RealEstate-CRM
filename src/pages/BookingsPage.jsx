@@ -828,6 +828,11 @@ export default function BookingsPage() {
                       options={clients}
                       placeholder="Select Client"
                     />
+
+
+
+
+                    
                     <button
                       onClick={() => {
                         setCreateNewClient(true)
