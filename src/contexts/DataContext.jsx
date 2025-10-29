@@ -1,3 +1,5 @@
+"use client"
+
 import React, { createContext, useState, useEffect } from "react"
 import { seedData } from "../data/seedData"
 
@@ -23,7 +25,7 @@ export const DataProvider = ({ children }) => {
   const updateData = (newData) => {
     console.log("=== DataContext: Updating data ===", {
       oldEnquiries: data.enquiries?.length,
-      newEnquiries: newData.enquiries?.length
+      newEnquiries: newData.enquiries?.length,
     })
     setData(newData)
     localStorage.setItem("propease_data", JSON.stringify(newData))
@@ -215,12 +217,25 @@ export const DataProvider = ({ children }) => {
   }
 
   const addFollowUpNode = (node) => {
+    const nodeWithAgent = {
+      ...node,
+      agentName: node.agentName || "Unknown",
+    }
     const updated = {
       ...data,
-      followUpNodes: [...(data.followUpNodes || []), node],
+      followUpNodes: [...(data.followUpNodes || []), nodeWithAgent],
     }
     updateData(updated)
-    return node
+    return nodeWithAgent
+  }
+
+  const updateFollowUp = (followUpId, updates) => {
+    const followUps = data.followUps || []
+    const updated = {
+      ...data,
+      followUps: followUps.map((fu) => (fu.followUpId === followUpId ? { ...fu, ...updates } : fu)),
+    }
+    updateData(updated)
   }
 
   return (
@@ -248,6 +263,7 @@ export const DataProvider = ({ children }) => {
         markNotificationRead,
         addFollowUp,
         addFollowUpNode,
+        updateFollowUp,
       }}
     >
       {children}

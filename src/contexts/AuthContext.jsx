@@ -1,5 +1,3 @@
-"use client"
-
 import React, { createContext, useState, useEffect } from "react"
 import { STATIC_CREDENTIALS } from "../utils/constants"
 
@@ -31,6 +29,7 @@ export const AuthProvider = ({ children }) => {
     const userData = {
       email,
       role: credential.role,
+      fullName: credential.fullName,
       loginTime: new Date().toISOString(),
     }
 

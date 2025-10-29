@@ -9,7 +9,12 @@ export const Timeline = ({ events }) => {
           </div>
           <div className="pb-6">
             <p className="text-sm font-semibold text-gray-900">{event.title}</p>
-            <p className="text-xs text-gray-600 mt-1">{event.timestamp}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs text-gray-600">{event.timestamp}</p>
+              {event.agent && (
+                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">by {event.agent}</span>
+              )}
+            </div>
             {event.description && <p className="text-sm text-gray-700 mt-2">{event.description}</p>}
           </div>
         </div>

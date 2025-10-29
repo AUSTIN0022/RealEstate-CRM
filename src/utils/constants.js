@@ -1,3 +1,5 @@
+import { seedData } from "../data/seedData"
+
 export const ROLES = {
   ADMIN: "ADMIN",
   EMPLOYEE: "EMPLOYEE",
@@ -48,9 +50,9 @@ export const STATUS_COLORS = {
   IN_PROGRESS: "#3b82f6",
 }
 
-export const STATIC_CREDENTIALS = [
-  { email: "admin@propease.test", password: "1234", role: "ADMIN" },
-  { email: "agent@propease.test", password: "1234", role: "EMPLOYEE" },
-  { email: "sarah@propease.test", password: "1234", role: "EMPLOYEE" },
-  { email: "mike@propease.test", password: "1234", role: "EMPLOYEE" },
-]
+export const STATIC_CREDENTIALS = seedData.users.map((user) => ({
+  email: user.email,
+  password: user.passwordHash,
+  role: user.role,
+  fullName: user.fullName,
+}))
