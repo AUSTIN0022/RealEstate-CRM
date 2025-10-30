@@ -98,7 +98,7 @@ export const AppLayout = ({ children }) => {
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+            className="w-full flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition"
             title={!sidebarOpen ? "Logout" : ""}
           >
             <LogOut size={20} />
@@ -136,7 +136,7 @@ export const AppLayout = ({ children }) => {
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg"
+                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-xl"
               >
                 <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
                   {user?.email?.charAt(0).toUpperCase()}
@@ -145,7 +145,7 @@ export const AppLayout = ({ children }) => {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-10">
                   <div className="px-4 py-3 border-b border-gray-200">
                     <p className="text-sm font-medium text-gray-900">{user?.email}</p>
                     <p className="text-xs text-gray-600">{user?.role}</p>

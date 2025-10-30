@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useMemo, useCallback } from "react"
 import { useData } from "../contexts/DataContext"
 import { useToast } from "../components/ui/Toast"
@@ -16,6 +14,7 @@ import { FormSelect } from "../components/ui/FormSelect"
 import { Plus, CheckCircle2, Circle, Calendar, User, FileText } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { formatDateTime } from "../utils/helpers"
+import { FOLLOWUP_EVENT_TAGS } from "../utils/constants"
 
 // Constants
 const INITIAL_FORM_STATE = {
@@ -27,6 +26,7 @@ const INITIAL_FORM_STATE = {
 const INITIAL_NODE_FORM_STATE = {
   body: "",
   followUpDateTime: new Date().toISOString().slice(0, 16),
+  eventTag: FOLLOWUP_EVENT_TAGS.CLIENT_CALLED,
 }
 
 const VIEW_MODES = {
@@ -55,25 +55,28 @@ const formatDate = (date) => {
 
 // Custom hooks
 const useEnquiryInfo = (data) => {
-  return useCallback((enquiryId) => {
-    const enquiry = data.enquiries.find((e) => e.enquiryId === enquiryId && !e.isDeleted)
-    const client = data.clients.find((c) => c.clientId === enquiry?.clientId)
-    const flat = data.flats.find((f) => f.propertyId === enquiry?.propertyId)
-    
-    return {
-      clientName: client?.clientName || "Unknown",
-      unitNumber: flat?.unitNumber || "Unknown",
-    }
-  }, [data.enquiries, data.clients, data.flats])
+  return useCallback(
+    (enquiryId) => {
+      const enquiry = data.enquiries.find((e) => e.enquiryId === enquiryId && !e.isDeleted)
+      const client = data.clients.find((c) => c.clientId === enquiry?.clientId)
+      const flat = data.flats.find((f) => f.propertyId === enquiry?.propertyId)
+
+      return {
+        clientName: client?.clientName || "Unknown",
+        unitNumber: flat?.unitNumber || "Unknown",
+      }
+    },
+    [data.enquiries, data.clients, data.flats],
+  )
 }
 
 const useFollowUpStats = (followUps, today) => {
   return useMemo(() => {
     console.log("Recalculating stats, total followUps:", followUps.length)
     const pending = followUps.filter((fu) => fu.status === "PENDING")
-    
+
     const overdue = pending.filter((fu) => normalizeDate(fu.followUpDate) < today).length
-    
+
     const todayPending = pending.filter((fu) => {
       const fuDate = normalizeDate(fu.followUpDate)
       return fuDate.getTime() === today.getTime()
@@ -105,7 +108,7 @@ const FollowUpTable = ({ followUps, columns, viewMode, onComplete, onViewTimelin
   return followUps.map((followUp) => {
     const isComplete = followUp.status === "COMPLETED"
     const isOverdue = followUp.isOverdue && !isComplete
-    
+
     return (
       <tr
         key={followUp.followUpId}
@@ -129,9 +132,7 @@ const FollowUpTable = ({ followUps, columns, viewMode, onComplete, onViewTimelin
         {columns.map((col) => (
           <td
             key={col.key}
-            className={`px-6 py-4 text-sm text-gray-900 ${
-              isComplete ? "line-through text-gray-500" : ""
-            }`}
+            className={`px-6 py-4 text-sm text-gray-900 ${isComplete ? "line-through text-gray-500" : ""}`}
           >
             {col.render(followUp[col.key], followUp)}
           </td>
@@ -194,15 +195,7 @@ const AddFollowUpModal = ({ isOpen, onClose, form, setForm, enquiries, getEnquir
   </Modal>
 )
 
-const CompleteFollowUpModal = ({ 
-  isOpen, 
-  onClose, 
-  selectedFollowUp, 
-  getEnquiryInfo, 
-  form, 
-  setForm, 
-  onConfirm 
-}) => (
+const CompleteFollowUpModal = ({ isOpen, onClose, selectedFollowUp, getEnquiryInfo, form, setForm, onConfirm }) => (
   <Modal isOpen={isOpen} onClose={onClose} title="Complete Follow-Up" size="lg">
     <div className="space-y-4">
       <div>
@@ -211,6 +204,17 @@ const CompleteFollowUpModal = ({
           {selectedFollowUp ? getEnquiryInfo(selectedFollowUp.enquiryId).clientName : ""}
         </p>
       </div>
+
+      <FormSelect
+        label="Event Tag"
+        value={form.eventTag}
+        onChange={(e) => setForm({ ...form, eventTag: e.target.value })}
+        options={Object.entries(FOLLOWUP_EVENT_TAGS).map(([key, value]) => ({
+          value: value,
+          label: value,
+        }))}
+        required
+      />
 
       <FormTextarea
         label="Add Remark (Optional)"
@@ -245,7 +249,7 @@ export default function FollowUpPage() {
   const { data, addFollowUp, addFollowUpNode, updateFollowUp } = useData()
   const { user } = useAuth()
   const { success, error } = useToast()
-  
+
   // State
   const [showAddModal, setShowAddModal] = useState(false)
   const [showTimelineModal, setShowTimelineModal] = useState(false)
@@ -254,7 +258,11 @@ export default function FollowUpPage() {
   const [viewMode, setViewMode] = useState(VIEW_MODES.TODAY)
   const [addForm, setAddForm] = useState(INITIAL_FORM_STATE)
   const [nodeForm, setNodeForm] = useState(INITIAL_NODE_FORM_STATE)
-  const [completeForm, setCompleteForm] = useState({ remark: "", nextFollowUpDate: "" })
+  const [completeForm, setCompleteForm] = useState({
+    remark: "",
+    nextFollowUpDate: "",
+    eventTag: FOLLOWUP_EVENT_TAGS.FOLLOW_UP_COMPLETED,
+  })
 
   // Memoized data
   const activeEnquiries = useMemo(() => {
@@ -293,25 +301,28 @@ export default function FollowUpPage() {
   }, [enrichedFollowUps, viewMode, today])
 
   // Get follow-up nodes
-  const getFollowUpNodes = useCallback((followUpId) => {
-    return (data.followUpNodes || [])
-      .filter((node) => node.followUpId === followUpId && !node.isDeleted)
-      .sort((a, b) => new Date(a.followUpDateTime) - new Date(b.followUpDateTime))
-  }, [data.followUpNodes])
+  const getFollowUpNodes = useCallback(
+    (followUpId) => {
+      return (data.followUpNodes || [])
+        .filter((node) => node.followUpId === followUpId && !node.isDeleted)
+        .sort((a, b) => new Date(a.followUpDateTime) - new Date(b.followUpDateTime))
+    },
+    [data.followUpNodes],
+  )
 
   // Timeline events
   const timelineEvents = useMemo(() => {
     if (!selectedFollowUp) return []
-    
+
     return [
       {
-        title: "Follow-up Created",
+        title: FOLLOWUP_EVENT_TAGS.FOLLOW_UP_CREATED,
         timestamp: formatDate(selectedFollowUp.followUpDate),
         description: selectedFollowUp.notes || "No description",
         agent: selectedFollowUp.agentName,
       },
       ...getFollowUpNodes(selectedFollowUp.followUpId).map((node) => ({
-        title: "Note Added",
+        title: node.eventTag || "Note Added",
         timestamp: formatDateTime(node.followUpDateTime),
         description: node.body,
         agent: node.agentName,
@@ -355,6 +366,7 @@ export default function FollowUpPage() {
       followUpId: selectedFollowUp.followUpId,
       followUpDateTime: nodeForm.followUpDateTime,
       body: nodeForm.body,
+      eventTag: nodeForm.eventTag,
       agentName: user?.fullName || "Unknown",
       userId: user?.userId || "current-user",
       isDeleted: false,
@@ -362,18 +374,26 @@ export default function FollowUpPage() {
 
     addFollowUpNode(node)
     success("Note added successfully")
-    setNodeForm({ ...INITIAL_NODE_FORM_STATE, followUpDateTime: new Date().toISOString().slice(0, 16) })
+    setNodeForm({
+      ...INITIAL_NODE_FORM_STATE,
+      followUpDateTime: new Date().toISOString().slice(0, 16),
+      eventTag: FOLLOWUP_EVENT_TAGS.CLIENT_CALLED,
+    })
   }, [nodeForm, selectedFollowUp, user, addFollowUpNode, success, error])
 
-  const handleCompleteFollowUp = useCallback((followUpId) => {
-    const followUp = enrichedFollowUps.find((fu) => fu.followUpId === followUpId)
-    setSelectedFollowUp(followUp)
-    setCompleteForm({
-      remark: "",
-      nextFollowUpDate: getNextWeekDate(),
-    })
-    setShowCompleteModal(true)
-  }, [enrichedFollowUps])
+  const handleCompleteFollowUp = useCallback(
+    (followUpId) => {
+      const followUp = enrichedFollowUps.find((fu) => fu.followUpId === followUpId)
+      setSelectedFollowUp(followUp)
+      setCompleteForm({
+        remark: "",
+        nextFollowUpDate: getNextWeekDate(),
+        eventTag: FOLLOWUP_EVENT_TAGS.FOLLOW_UP_COMPLETED,
+      })
+      setShowCompleteModal(true)
+    },
+    [enrichedFollowUps],
+  )
 
   const handleConfirmComplete = useCallback(() => {
     if (!selectedFollowUp) return
@@ -389,6 +409,7 @@ export default function FollowUpPage() {
         followUpId: selectedFollowUp.followUpId,
         followUpDateTime: new Date().toISOString(),
         body: completeForm.remark || "Follow-up completed",
+        eventTag: completeForm.eventTag,
         agentName: user?.fullName || "Unknown",
         userId: user?.userId || "current-user",
         isDeleted: false,
@@ -419,11 +440,15 @@ export default function FollowUpPage() {
 
       console.log("=== Follow-up completion successful ===")
       success("Follow-up completed successfully")
-      
+
       // Reset state after successful completion
       setShowCompleteModal(false)
       setSelectedFollowUp(null)
-      setCompleteForm({ remark: "", nextFollowUpDate: "" })
+      setCompleteForm({
+        remark: "",
+        nextFollowUpDate: "",
+        eventTag: FOLLOWUP_EVENT_TAGS.FOLLOW_UP_COMPLETED,
+      })
     } catch (err) {
       console.error("=== Error completing follow-up ===", err)
       error("Failed to complete follow-up. Please try again.")
@@ -436,31 +461,34 @@ export default function FollowUpPage() {
   }, [])
 
   // Table columns
-  const columns = useMemo(() => [
-    {
-      key: "enquiryId",
-      label: "Enquiry",
-      render: (val) => {
-        const info = getEnquiryInfo(val)
-        return `${info.clientName} - ${info.unitNumber}`
+  const columns = useMemo(
+    () => [
+      {
+        key: "enquiryId",
+        label: "Enquiry",
+        render: (val) => {
+          const info = getEnquiryInfo(val)
+          return `${info.clientName} - ${info.unitNumber}`
+        },
       },
-    },
-    {
-      key: "followUpDate",
-      label: "Follow-Up Date",
-      render: (val) => formatDate(val),
-    },
-    {
-      key: "agentName",
-      label: "Agent",
-      render: (val) => val || "Unassigned",
-    },
-    {
-      key: "notes",
-      label: "Description",
-      render: (val) => <p className="truncate max-w-xs">{val || "-"}</p>,
-    },
-  ], [getEnquiryInfo])
+      {
+        key: "followUpDate",
+        label: "Follow-Up Date",
+        render: (val) => formatDate(val),
+      },
+      {
+        key: "agentName",
+        label: "Agent",
+        render: (val) => val || "Unassigned",
+      },
+      {
+        key: "notes",
+        label: "Description",
+        render: (val) => <p className="truncate max-w-xs">{val || "-"}</p>,
+      },
+    ],
+    [getEnquiryInfo],
+  )
 
   return (
     <AppLayout>
@@ -504,14 +532,14 @@ export default function FollowUpPage() {
 
         {/* View Mode Buttons */}
         <div className="flex gap-2">
-          <Button 
-            onClick={() => setViewMode(VIEW_MODES.TODAY)} 
+          <Button
+            onClick={() => setViewMode(VIEW_MODES.TODAY)}
             variant={viewMode === VIEW_MODES.TODAY ? "primary" : "secondary"}
           >
             Today's Tasks
           </Button>
-          <Button 
-            onClick={() => setViewMode(VIEW_MODES.ALL)} 
+          <Button
+            onClick={() => setViewMode(VIEW_MODES.ALL)}
             variant={viewMode === VIEW_MODES.ALL ? "primary" : "secondary"}
           >
             All Follow-Ups
@@ -610,31 +638,46 @@ export default function FollowUpPage() {
                     {selectedFollowUp.notes && (
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Initial Notes</p>
-                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                          {selectedFollowUp.notes}
-                        </p>
+                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{selectedFollowUp.notes}</p>
                       </div>
                     )}
                   </div>
                 </ModalSection>
-
                 <ModalSection title="Add New Note" icon={FileText} iconColor="text-green-600">
-                  <div className="space-y-3">
+                <div className="space-y-3">
                     <FormInput
-                      value={nodeForm.body}
-                      onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
-                      placeholder="Enter your note..."
+                        value={nodeForm.body}
+                        onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
+                        placeholder="Enter your note..."
                     />
-                    <FormInput
-                      type="datetime-local"
-                      value={nodeForm.followUpDateTime}
-                      onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
-                    />
+                    <div className="flex gap-6">
+                        <div className="flex-1">
+                            <FormSelect
+                                label="Event Tag"
+                                value={nodeForm.eventTag}
+                                onChange={(e) => setNodeForm({ ...nodeForm, eventTag: e.target.value })}
+                                options={Object.entries(FOLLOWUP_EVENT_TAGS).map(([key, value]) => ({
+                                    value: value,
+                                    label: value,
+                                }))}
+                                required
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <FormInput
+                                label="Next Follow-Up Date & Time"
+                                type="datetime-local"
+                                value={nodeForm.followUpDateTime}
+                                onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
+                            />
+                        </div>
+                    </div>
                     <Button onClick={handleAddNote} variant="primary" className="w-full">
-                      Add Note
+                        Add Note
                     </Button>
-                  </div>
+                </div>
                 </ModalSection>
+
               </div>
             )
           }

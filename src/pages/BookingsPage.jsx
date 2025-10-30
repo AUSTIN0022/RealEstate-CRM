@@ -829,9 +829,6 @@ export default function BookingsPage() {
                       placeholder="Select Client"
                     />
 
-
-
-
                     
                     <button
                       onClick={() => {
