@@ -7,7 +7,7 @@ export const Timeline = ({ events }) => {
             <div className="w-3 h-3 bg-indigo-600 rounded-full" />
             {idx < events.length - 1 && <div className="w-0.5 h-12 bg-gray-200 mt-2" />}
           </div>
-          <div className="pb-6">
+          <div className="pb-1">
             <p className="text-sm font-semibold text-gray-900">{event.title}</p>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-xs text-gray-600">{event.timestamp}</p>
