@@ -90,3 +90,13 @@ export const FOLLOWUP_EVENT_TAG_COLORS = {
   "Waiting for Client": "bg-gray-100 text-gray-700",
   "Follow-up Completed": "bg-green-100 text-green-700",
 }
+
+export const FLAT_TYPES = {
+  ONE_BHK: "1BHK",
+  TWO_BHK: "2BHK",
+  THREE_BHK: "3BHK",
+  FOUR_BHK: "4BHK",
+  FIVE_BHK: "5BHK",
+  STUDIO: "Studio",
+  PENTHOUSE: "Penthouse",
+}

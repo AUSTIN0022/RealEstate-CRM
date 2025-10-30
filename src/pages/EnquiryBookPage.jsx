@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useMemo } from "react"
 import { useData } from "../contexts/DataContext"
 import { AppLayout } from "../components/layout/AppLayout"
@@ -16,9 +18,8 @@ import { Plus, Search } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { validateEmail, validatePhone } from "../utils/helpers"
 
-
 export default function EnquiryBookPage() {
-  const { data, addEnquiry, addClient, updateEnquiry, addFollowUp, updateData  } = useData()
+  const { data, addEnquiry, addClient, updateEnquiry, addFollowUp, updateData } = useData()
   const { success, error } = useToast()
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -35,14 +36,16 @@ export default function EnquiryBookPage() {
     referenceName: "",
     remark: "",
     status: "ONGOING",
+    flatType: "",
+    squareFeet: "",
   })
 
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
     mobile: "",
-    pan: "",
-    aadhar: "",
+    occupation: "",
+    annualIncome: "",
   })
 
   const [createNewClient, setCreateNewClient] = useState(false)
@@ -76,112 +79,114 @@ export default function EnquiryBookPage() {
   const projects = useMemo(() => {
     return data.projects.filter((p) => !p.isDeleted)
   }, [data.projects])
-// Replace your handleAddEnquiry function with this fixed version
 
-const handleAddEnquiry = () => {
-  let clientId = form.clientId
+  const handleAddEnquiry = () => {
+    let clientId = form.clientId
 
-  if (createNewClient) {
-    if (!newClient.name || !newClient.email || !newClient.mobile) {
-      error("Please fill all required client fields")
+    if (createNewClient) {
+      if (!newClient.name || !newClient.email || !newClient.mobile) {
+        error("Please fill all required client fields")
+        return
+      }
+      if (!validateEmail(newClient.email)) {
+        error("Invalid email format")
+        return
+      }
+      if (!validatePhone(newClient.mobile)) {
+        error("Mobile number must be 10 digits")
+        return
+      }
+
+      clientId = uuidv4()
+      const newClientObj = {
+        clientId,
+        clientName: newClient.name,
+        email: newClient.email,
+        mobileNumber: newClient.mobile,
+        occupation: newClient.occupation,
+        annualIncome: newClient.annualIncome,
+        dob: "",
+        city: "",
+        address: "",
+        company: "",
+        createdDate: new Date().toISOString().split("T")[0],
+        isDeleted: false,
+      }
+      addClient(newClientObj)
+    }
+
+    if (!clientId || !form.projectId || !form.flatType || !form.squareFeet || !form.budget) {
+      error("Please fill all required fields")
       return
     }
-    if (!validateEmail(newClient.email)) {
-      error("Invalid email format")
-      return
-    }
-    if (!validatePhone(newClient.mobile)) {
-      error("Mobile number must be 10 digits")
-      return
+
+    if (editingId) {
+      const enquiry = {
+        enquiryId: editingId,
+        projectId: form.projectId,
+        clientId: clientId,
+        propertyId: form.propertyId,
+        budget: form.budget,
+        reference: form.reference,
+        referenceName: form.referenceName,
+        remark: form.remark,
+        status: form.status,
+        flatType: form.flatType,
+        squareFeet: form.squareFeet,
+        createdDate: new Date().toISOString().split("T")[0],
+        isDeleted: false,
+      }
+      updateEnquiry(editingId, enquiry)
+      success("Enquiry updated successfully")
+    } else {
+      // Create both enquiry and follow-up in a single update
+      const enquiryId = uuidv4()
+      const enquiry = {
+        enquiryId: enquiryId,
+        projectId: form.projectId,
+        clientId: clientId,
+        propertyId: form.propertyId,
+        budget: form.budget,
+        reference: form.reference,
+        referenceName: form.referenceName,
+        remark: form.remark,
+        status: form.status,
+        flatType: form.flatType,
+        squareFeet: form.squareFeet,
+        createdDate: new Date().toISOString().split("T")[0],
+        isDeleted: false,
+      }
+
+      const nextFollowUpDate = new Date()
+      nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 7)
+      const followUpDateStr = nextFollowUpDate.toISOString().split("T")[0]
+
+      const initialFollowUp = {
+        followUpId: uuidv4(),
+        enquiryId: enquiryId,
+        followUpDate: followUpDateStr,
+        followUpTime: "10:00",
+        status: "PENDING",
+        notes: "Initial follow-up created",
+        createdDate: new Date().toISOString().split("T")[0],
+        isDeleted: false,
+      }
+
+      // Add both in a single update to avoid stale data issues
+      const updated = {
+        ...data,
+        enquiries: [...(data.enquiries || []), enquiry],
+        followUps: [...(data.followUps || []), initialFollowUp],
+      }
+
+      updateData(updated)
+      success("Enquiry created successfully with initial follow-up")
     }
 
-    clientId = uuidv4()
-    const newClientObj = {
-      clientId,
-      clientName: newClient.name,
-      email: newClient.email,
-      mobileNumber: newClient.mobile,
-      panNo: newClient.pan,
-      aadharNo: newClient.aadhar,
-      dob: "",
-      city: "",
-      address: "",
-      occupation: "",
-      company: "",
-      createdDate: new Date().toISOString().split("T")[0],
-      isDeleted: false,
-    }
-    addClient(newClientObj)
+    resetForm()
+    setShowModal(false)
   }
 
-  if (!clientId || !form.projectId || !form.propertyId || !form.budget) {
-    error("Please fill all required fields")
-    return
-  }
-
-  if (editingId) {
-    const enquiry = {
-      enquiryId: editingId,
-      projectId: form.projectId,
-      clientId: clientId,
-      propertyId: form.propertyId,
-      budget: form.budget,
-      reference: form.reference,
-      referenceName: form.referenceName,
-      remark: form.remark,
-      status: form.status,
-      createdDate: new Date().toISOString().split("T")[0],
-      isDeleted: false,
-    }
-    updateEnquiry(editingId, enquiry)
-    success("Enquiry updated successfully")
-  } else {
-    // Create both enquiry and follow-up in a single update
-    const enquiryId = uuidv4()
-    const enquiry = {
-      enquiryId: enquiryId,
-      projectId: form.projectId,
-      clientId: clientId,
-      propertyId: form.propertyId,
-      budget: form.budget,
-      reference: form.reference,
-      referenceName: form.referenceName,
-      remark: form.remark,
-      status: form.status,
-      createdDate: new Date().toISOString().split("T")[0],
-      isDeleted: false,
-    }
-
-    const nextFollowUpDate = new Date()
-    nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 7)
-    const followUpDateStr = nextFollowUpDate.toISOString().split("T")[0]
-
-    const initialFollowUp = {
-      followUpId: uuidv4(),
-      enquiryId: enquiryId,
-      followUpDate: followUpDateStr,
-      followUpTime: "10:00",
-      status: "PENDING",
-      notes: "Initial follow-up created",
-      createdDate: new Date().toISOString().split("T")[0],
-      isDeleted: false,
-    }
-
-    // Add both in a single update to avoid stale data issues
-    const updated = {
-      ...data,
-      enquiries: [...(data.enquiries || []), enquiry],
-      followUps: [...(data.followUps || []), initialFollowUp],
-    }
-    
-    updateData(updated)
-    success("Enquiry created successfully with initial follow-up")
-  }
-
-  resetForm()
-  setShowModal(false)
-}
-  
   const handleAddRemark = () => {
     if (!remarkText.trim()) {
       error("Please enter a remark")
@@ -209,8 +214,10 @@ const handleAddEnquiry = () => {
       referenceName: "",
       remark: "",
       status: "ONGOING",
+      flatType: "",
+      squareFeet: "",
     })
-    setNewClient({ name: "", email: "", mobile: "", pan: "", aadhar: "" })
+    setNewClient({ name: "", email: "", mobile: "", occupation: "", annualIncome: "" })
     setCreateNewClient(false)
     setEditingId(null)
   }
@@ -335,8 +342,7 @@ const handleAddEnquiry = () => {
             ]}
           />
         </Card>
-
-        {/* Add/Edit Enquiry Modal */}
+        
         {/* Add/Edit Enquiry Modal - Two Column Layout */}
         <Modal
           isOpen={showModal}
@@ -359,7 +365,12 @@ const handleAddEnquiry = () => {
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-gray-900">Client Information</h3>
@@ -400,14 +411,14 @@ const handleAddEnquiry = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <FormInput
-                        label="PAN"
-                        value={newClient.pan}
-                        onChange={(e) => setNewClient({ ...newClient, pan: e.target.value })}
+                        label="Occupation"
+                        value={newClient.occupation}
+                        onChange={(e) => setNewClient({ ...newClient, occupation: e.target.value })}
                       />
                       <FormInput
-                        label="Aadhar"
-                        value={newClient.aadhar}
-                        onChange={(e) => setNewClient({ ...newClient, aadhar: e.target.value })}
+                        label="Annual Income"
+                        value={newClient.annualIncome}
+                        onChange={(e) => setNewClient({ ...newClient, annualIncome: e.target.value })}
                       />
                     </div>
                   </div>
@@ -432,7 +443,12 @@ const handleAddEnquiry = () => {
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                     <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-gray-900">Property Details</h3>
@@ -446,19 +462,37 @@ const handleAddEnquiry = () => {
                     options={projects.map((p) => ({ value: p.projectId, label: p.projectName }))}
                     required
                   />
-
-                  {form.projectId && (
-                    <FormSelect
-                      label="Unit"
-                      value={form.propertyId}
-                      onChange={(e) => setForm({ ...form, propertyId: e.target.value })}
-                      options={data.flats
-                        .filter((f) => f.projectId === form.projectId && f.status === "VACANT" && !f.isDeleted)
-                        .map((f) => ({ value: f.propertyId, label: f.unitNumber }))}
-                      required
-                    />
-                  )}
+                 <div className="flex gap-4"> 
+                    <div className="flex-1"> 
+                        <FormSelect
+                            label="Flat Type"
+                            value={form.flatType}
+                            onChange={(e) => setForm({ ...form, flatType: e.target.value })}
+                            options={[
+                                { value: "1BHK", label: "1BHK" },
+                                { value: "2BHK", label: "2BHK" },
+                                { value: "3BHK", label: "3BHK" },
+                                { value: "4BHK", label: "4BHK" },
+                                { value: "5BHK", label: "5BHK" },
+                                { value: "Studio", label: "Studio" },
+                                { value: "Penthouse", label: "Penthouse" },
+                            ]}
+                            required
+                        />
+                  </div>
+                    <div className="flex-1"> 
+                        <FormInput
+                            label="Square Feet"
+                            type="number"
+                            value={form.squareFeet}
+                            onChange={(e) => setForm({ ...form, squareFeet: e.target.value })}
+                            placeholder="e.g., 1200"
+                            required
+                        />
+                  </div>
                 </div>
+                </div>
+
               </div>
             </div>
           }
@@ -469,7 +503,12 @@ const handleAddEnquiry = () => {
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
                     <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-gray-900">Enquiry Details</h3>
@@ -526,14 +565,19 @@ const handleAddEnquiry = () => {
                   <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
                     <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       Enquiry Summary
                     </h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Created Date</span>
-                        <span className="font-medium text-gray-900">{selectedEnquiry?.createdDate || 'N/A'}</span>
+                        <span className="font-medium text-gray-900">{selectedEnquiry?.createdDate || "N/A"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Current Status</span>
@@ -564,7 +608,7 @@ const handleAddEnquiry = () => {
               </button>
             </div>
           }
-        />   
+        />
 
         {/* Add Remark Modal */}
         <Modal isOpen={showRemarkModal} onClose={() => setShowRemarkModal(false)} title="Add Remark">
@@ -584,7 +628,6 @@ const handleAddEnquiry = () => {
             </Button>
           </div>
         </Modal>
-        
       </div>
     </AppLayout>
   )
