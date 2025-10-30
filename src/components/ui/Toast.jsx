@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import { X, CheckCircle, AlertCircle, Info } from "lucide-react"
@@ -48,11 +47,11 @@ export const ToastContainer = () => {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-4 right-4 z-[60] space-y-2">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white animate-fade-in ${
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white animate-fade-in ${
             toast.type === "success" ? "bg-green-500" : toast.type === "error" ? "bg-red-500" : "bg-blue-500"
           }`}
         >

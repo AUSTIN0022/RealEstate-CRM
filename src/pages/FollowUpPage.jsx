@@ -575,33 +575,35 @@ export default function FollowUpPage() {
           title="Follow-Up Timeline"
           leftContent={
             selectedFollowUp && (
-              <div className="space-y-6">
+              <div className="space-y-6 px-2 overflow-y-auto max-h-[calc(90vh-200px)]">
                 <ModalSection title="Follow-Up Details" icon={Calendar} iconColor="text-indigo-600">
                   <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Enquiry</p>
-                      <p className="text-base font-semibold text-gray-900">
-                        {getEnquiryInfo(selectedFollowUp.enquiryId).clientName}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Unit: {getEnquiryInfo(selectedFollowUp.enquiryId).unitNumber}
-                      </p>
+                    <div className="flex gap-6">
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600 mb-1">Enquiry</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {getEnquiryInfo(selectedFollowUp.enquiryId).clientName}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Unit: {getEnquiryInfo(selectedFollowUp.enquiryId).unitNumber}
+                        </p>
+                      </div>
+
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600 mb-1">Follow-Up Date</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {formatDate(selectedFollowUp.followUpDate)}
+                        </p>
+                      </div>
                     </div>
 
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Follow-Up Date</p>
-                      <p className="text-base font-semibold text-gray-900">
-                        {formatDate(selectedFollowUp.followUpDate)}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Agent</p>
                       <div className="flex items-center gap-2">
                         <User size={16} className="text-gray-400" />
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-gray-900">
                           {selectedFollowUp.agentName || "Unassigned"}
                         </p>
+                        <span className="text-xs px-2 py-1.5 bg-gray-100 text-gray-600 rounded-full">(Agent)</span>
                       </div>
                     </div>
 
@@ -618,11 +620,10 @@ export default function FollowUpPage() {
 
                 <ModalSection title="Add New Note" icon={FileText} iconColor="text-green-600">
                   <div className="space-y-3">
-                    <FormTextarea
+                    <FormInput
                       value={nodeForm.body}
                       onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
                       placeholder="Enter your note..."
-                      rows={4}
                     />
                     <FormInput
                       type="datetime-local"
@@ -638,9 +639,11 @@ export default function FollowUpPage() {
             )
           }
           rightContent={
-            <ModalSection title="Activity Timeline" icon={Calendar} iconColor="text-purple-600">
-              <Timeline events={timelineEvents} />
-            </ModalSection>
+            <div className="overflow-y-auto max-h-[calc(90vh-200px)]">
+              <ModalSection title="Activity Timeline" icon={Calendar} iconColor="text-purple-600">
+                <Timeline events={timelineEvents} />
+              </ModalSection>
+            </div>
           }
           columnGap="lg"
         />
