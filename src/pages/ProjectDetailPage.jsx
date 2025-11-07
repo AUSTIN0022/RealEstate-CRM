@@ -1,8 +1,6 @@
-"use client"
-
-import { useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { useData } from "../contexts/DataContext"
+import { useToast } from "../components/ui/Toast"
 import { AppLayout } from "../components/layout/AppLayout"
 import { Card } from "../components/ui/Card"
 import { Tabs } from "../components/ui/Tabs"
@@ -10,49 +8,68 @@ import { Badge } from "../components/ui/Badge"
 import { Button } from "../components/ui/Button"
 import { Table } from "../components/ui/Table"
 import { ArrowLeft, Edit, Trash2 } from "lucide-react"
-import { generateSlug, formatDate } from "../utils/helpers"
-import { FLAT_STATUS } from "../utils/constants"
+import { formatDate } from "../utils/helpers"
+import { projectService } from "../services/projectService"
 
 export default function ProjectDetailPage() {
-  const { slug } = useParams()
+  const { projectId } = useParams()
   const navigate = useNavigate()
-  const { data } = useData()
+  const { success, error } = useToast()
 
-  const project = useMemo(() => {
-    return data.projects.find((p) => generateSlug(p.projectName) === slug && !p.isDeleted)
-  }, [data.projects, slug])
+  const [project, setProject] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [enquiries, setEnquiries] = useState([])
 
-  const wings = useMemo(() => {
-    return data.wings.filter((w) => w.projectId === project?.projectId && !w.isDeleted)
-  }, [data.wings, project])
+  useEffect(() => {
+    const fetchProjectDetails = async () => {
+      try {
+        setLoading(true)
+        console.log("Fetching project details for ID:", projectId)
 
-  const floors = useMemo(() => {
-    return data.floors.filter((f) => f.projectId === project?.projectId && !f.isDeleted)
-  }, [data.floors, project])
+        const projectData = await projectService.getProjectById(projectId)
+        setProject(projectData)
+        console.log("Project details fetched:", projectData)
 
-  const flats = useMemo(() => {
-    return data.flats.filter((f) => f.projectId === project?.projectId && !f.isDeleted)
-  }, [data.flats, project])
+        try {
+          const enquiriesData = await projectService.getProjectEnquiries(projectId)
+          setEnquiries(enquiriesData)
+          console.log("Project enquiries fetched:", enquiriesData)
+        } catch (err) {
+          console.warn("Failed to fetch enquiries:", err)
+          setEnquiries([])
+        }
+      } catch (err) {
+        console.error("Failed to fetch project details:", err)
+        error(err.message || "Failed to load project details")
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  const amenities = useMemo(() => {
-    return data.amenities.filter((a) => a.projectId === project?.projectId && !a.isDeleted)
-  }, [data.amenities, project])
+    if (projectId) {
+      fetchProjectDetails()
+    }
+  }, [projectId])
 
-  const documents = useMemo(() => {
-    return data.documents.filter((d) => d.projectId === project?.projectId && !d.isDeleted)
-  }, [data.documents, project])
-
-  const disbursements = useMemo(() => {
-    return data.disbursements.filter((d) => d.projectId === project?.projectId && !d.isDeleted)
-  }, [data.disbursements, project])
-
-  const bankDetails = useMemo(() => {
-    return data.bankDetails.filter((b) => b.projectId === project?.projectId && !b.isDeleted)
-  }, [data.bankDetails, project])
-
-  const enquiries = useMemo(() => {
-    return data.enquiries.filter((e) => e.projectId === project?.projectId && !e.isDeleted)
-  }, [data.enquiries, project])
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="flex flex-col items-center gap-4">
+            <svg className="animate-spin h-10 w-10 text-indigo-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <p className="text-gray-600">Loading project details...</p>
+          </div>
+        </div>
+      </AppLayout>
+    )
+  }
 
   if (!project) {
     return (
@@ -67,11 +84,13 @@ export default function ProjectDetailPage() {
     )
   }
 
+  const flats = project.wings?.flatMap((wing) => wing.floors?.flatMap((floor) => floor.flats || []) || []) || []
+
   const unitStats = {
     total: flats.length,
-    vacant: flats.filter((f) => f.status === FLAT_STATUS.VACANT).length,
-    booked: flats.filter((f) => f.status === FLAT_STATUS.BOOKED).length,
-    registered: flats.filter((f) => f.status === FLAT_STATUS.REGISTERED).length,
+    vacant: flats.filter((f) => f.status === "Vacant").length,
+    booked: flats.filter((f) => f.status === "Booked").length,
+    registered: flats.filter((f) => f.status === "Registered").length,
   }
 
   const tabs = [
@@ -80,7 +99,7 @@ export default function ProjectDetailPage() {
       content: (
         <div className="space-y-6">
           <Card>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Status</p>
                 <Badge status={project.status} className="mt-2">
@@ -131,120 +150,27 @@ export default function ProjectDetailPage() {
       content: (
         <Card>
           <div className="space-y-4">
-            {wings.map((wing) => {
-              const wingFloors = floors.filter((f) => f.wingId === wing.wingId)
-              return (
+            {project.wings && project.wings.length > 0 ? (
+              project.wings.map((wing) => (
                 <div key={wing.wingId} className="border border-gray-200 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900">{wing.wingName}</h4>
                   <p className="text-sm text-gray-600 mt-1">
                     {wing.noOfFloors} floors, {wing.noOfProperties} properties
                   </p>
                   <div className="mt-3 space-y-2">
-                    {wingFloors.map((floor) => (
-                      <div key={floor.floorId} className="text-sm text-gray-700 ml-4">
-                        {floor.floorName} - {floor.quantity} units
-                      </div>
-                    ))}
+                    {wing.floors &&
+                      wing.floors.map((floor) => (
+                        <div key={floor.floorId} className="text-sm text-gray-700 ml-4">
+                          {floor.floorName} - {floor.quantity} units
+                        </div>
+                      ))}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </Card>
-      ),
-    },
-    {
-      label: "Banks",
-      content: (
-        <Card>
-          {bankDetails.length > 0 ? (
-            <div className="space-y-4">
-              {bankDetails.map((bank) => (
-                <div key={bank.bankDetailId} className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900">{bank.bankName}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{bank.branchName}</p>
-                  <p className="text-sm text-gray-600">Contact: {bank.contactPerson}</p>
-                  <p className="text-sm text-gray-600">{bank.contactNumber}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-600">No bank details added</p>
-          )}
-        </Card>
-      ),
-    },
-    {
-      label: "Amenities",
-      content: (
-        <Card>
-          <div className="flex flex-wrap gap-2">
-            {amenities.length > 0 ? (
-              amenities.map((amenity) => (
-                <Badge key={amenity.amenityId} variant="primary">
-                  {amenity.amenityName}
-                </Badge>
               ))
             ) : (
-              <p className="text-gray-600">No amenities added</p>
+              <p className="text-gray-600">No wings data available</p>
             )}
           </div>
-        </Card>
-      ),
-    },
-    {
-      label: "Documents",
-      content: (
-        <Card>
-          {documents.length > 0 ? (
-            <div className="space-y-2">
-              {documents.map((doc) => (
-                <div
-                  key={doc.documentId}
-                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{doc.documentTitle}</p>
-                    <p className="text-xs text-gray-600">{doc.documentType}</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Download
-                  </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-600">No documents added</p>
-          )}
-        </Card>
-      ),
-    },
-    {
-      label: "Disbursements",
-      content: (
-        <Card>
-          {disbursements.length > 0 ? (
-            <div className="space-y-4">
-              {disbursements.map((d) => (
-                <div key={d.disbursementId} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{d.disbursementTitle}</h4>
-                      <p className="text-sm text-gray-600">{d.description}</p>
-                    </div>
-                    <Badge variant="primary">{d.percentage}%</Badge>
-                  </div>
-                </div>
-              ))}
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  Total: {disbursements.reduce((sum, d) => sum + d.percentage, 0)}%
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-gray-600">No disbursements added</p>
-          )}
         </Card>
       ),
     },
@@ -252,12 +178,29 @@ export default function ProjectDetailPage() {
       label: "Enquiries",
       content: (
         <Card>
-          {enquiries.length > 0 ? (
+          {enquiries && enquiries.length > 0 ? (
             <Table
               columns={[
-                { key: "budget", label: "Budget" },
-                { key: "reference", label: "Reference" },
-                { key: "status", label: "Status", render: (val) => <Badge status={val}>{val}</Badge> },
+                {
+                  key: "clientName",
+                  label: "Client Name",
+                  render: (val) => <p className="font-medium text-gray-900">{val}</p>,
+                },
+                {
+                  key: "budget",
+                  label: "Budget",
+                  render: (val) => <p className="text-gray-700">{val}</p>,
+                },
+                {
+                  key: "reference",
+                  label: "Reference",
+                  render: (val) => <p className="text-sm text-gray-600">{val}</p>,
+                },
+                {
+                  key: "status",
+                  label: "Status",
+                  render: (val) => <Badge status={val}>{val}</Badge>,
+                },
               ]}
               data={enquiries}
             />
@@ -273,22 +216,22 @@ export default function ProjectDetailPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/projects")} className="p-2 hover:bg-gray-100 rounded-lg">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            <button onClick={() => navigate("/projects")} className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0">
               <ArrowLeft size={24} className="text-gray-600" />
             </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{project.projectName}</h1>
-              <p className="text-gray-600 mt-1">{project.projectAddress}</p>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">{project.projectName}</h1>
+              <p className="text-gray-600 mt-1 text-sm break-words">{project.projectAddress}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline">
+          <div className="flex gap-2 w-full sm:w-auto flex-col-reverse sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto bg-transparent">
               <Edit size={20} />
               Edit
             </Button>
-            <Button variant="danger">
+            <Button variant="danger" className="w-full sm:w-auto">
               <Trash2 size={20} />
               Delete
             </Button>

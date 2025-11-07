@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useData } from "../contexts/DataContext"
@@ -8,22 +6,21 @@ import { AppLayout } from "../components/layout/AppLayout"
 import { FormTextarea } from "../components/ui/FormTextarea"
 import { Stepper } from "../components/ui/Stepper"
 import { Table } from "../components/ui/Table"
-import { Modal, } from "../components/ui/Modal"
+import { Modal } from "../components/ui/Modal"
 import { Card } from "../components/ui/Card"
-import { Button  } from "../components/ui/Button"
+import { Button } from "../components/ui/Button"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
-import { Drawer } from "../components/ui/Drawer"
-import { Badge } from "../components/ui/Badge"
 import { Plus, Trash2 } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { validateMahareraNo } from "../utils/helpers"
+import { projectService } from "../services/projectService"
 
 export default function RegistrationPage() {
   const navigate = useNavigate()
-  const { addProject, addWing, addFloor, addFlat, addDisbursement, addBankDetail, addDocument } = useData()
   const { success, error } = useToast()
   const [currentStep, setCurrentStep] = useState(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Step 1: Basic Info
   const [basicInfo, setBasicInfo] = useState({
@@ -53,9 +50,10 @@ export default function RegistrationPage() {
 
   // Step 4: Amenities & Documents
   const [amenities, setAmenities] = useState([])
+  const [customAmenity, setCustomAmenity] = useState("")
   const [documents, setDocuments] = useState([])
   const [showDocModal, setShowDocModal] = useState(false)
-  const [docForm, setDocForm] = useState({ title: "", type: "FloorPlan" })
+  const [docForm, setDocForm] = useState({ title: "", type: "FloorPlan", file: null })
 
   // Step 5: Disbursements
   const [disbursements, setDisbursements] = useState([])
@@ -111,13 +109,31 @@ export default function RegistrationPage() {
     success("Bank added successfully")
   }
 
+  const handleAddCustomAmenity = () => {
+    if (!customAmenity.trim()) {
+      error("Please enter an amenity name")
+      return
+    }
+    if (amenities.includes(customAmenity)) {
+      error("Amenity already exists")
+      return
+    }
+    setAmenities([...amenities, customAmenity])
+    setCustomAmenity("")
+    success("Amenity added successfully")
+  }
+
   const handleAddDocument = () => {
     if (!docForm.title) {
       error("Please enter document title")
       return
     }
+    if (!docForm.file) {
+      error("Please select a file")
+      return
+    }
     setDocuments([...documents, { ...docForm, documentId: uuidv4() }])
-    setDocForm({ title: "", type: "FloorPlan" })
+    setDocForm({ title: "", type: "FloorPlan", file: null })
     setShowDocModal(false)
     success("Document added successfully")
   }
@@ -139,129 +155,126 @@ export default function RegistrationPage() {
     success("Disbursement added successfully")
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const totalPercentage = disbursements.reduce((sum, d) => sum + Number.parseFloat(d.percentage), 0)
     if (totalPercentage !== 100) {
-      error("Total disbursement percentage must equal 100%")
-      return
+        error("Total disbursement percentage must equal 100%")
+        return
     }
 
-    const projectId = uuidv4()
-    const project = {
-      projectId,
-      projectName: basicInfo.projectName,
-      mahareraNo: basicInfo.mahareraNo,
-      startDate: basicInfo.startDate,
-      completionDate: basicInfo.completionDate,
-      status: basicInfo.status,
-      projectAddress: basicInfo.address,
-      progress: 0,
-      letterHeadFileURL: "/placeholder.svg",
-      isDeleted: false,
+    if (wings.length === 0) {
+        error("Please add at least one wing")
+        return
     }
 
-    addProject(project)
+    if (banks.length === 0) {
+        error("Please add at least one bank")
+        return
+    }
 
-    // Add wings, floors, and flats
-    wings.forEach((wing) => {
-      const wingData = {
-        wingId: wing.wingId,
-        projectId,
-        wingName: wing.wingName,
-        noOfFloors: Number.parseInt(wing.noOfFloors),
-        noOfProperties: Number.parseInt(wing.noOfProperties),
-        isDeleted: false,
-      }
-      addWing(wingData)
+    setIsSubmitting(true)
 
-      // Add floors
-      for (let i = 0; i < Number.parseInt(wing.noOfFloors); i++) {
-        const floorData = {
-          floorId: uuidv4(),
-          projectId,
-          wingId: wing.wingId,
-          floorNo: i,
-          floorName: ["Ground", "1st", "2nd", "3rd", "4th"][i] || `${i}th`,
-          propertyType: "Residential",
-          area: 1000,
-          quantity: Number.parseInt(wing.noOfProperties) / Number.parseInt(wing.noOfFloors),
-          isDeleted: false,
+    try {
+        const projectData = {
+            projectName: basicInfo.projectName,
+            projectAddress: basicInfo.address,
+            startDate: basicInfo.startDate,
+            completionDate: basicInfo.completionDate,
+            mahareraNo: basicInfo.mahareraNo || "",
+            status: basicInfo.status || "UPCOMING",
+            progress: 0,
+            path: "/",
+
+            // Wings with floors
+            wings: wings.map((wing) => ({
+                wingName: wing.wingName,
+                noOfFloors: Number.parseInt(wing.noOfFloors),
+                noOfProperties: Number.parseInt(wing.noOfProperties),
+                floors: Array.from({ length: Number.parseInt(wing.noOfFloors) }, (_, i) => ({
+                    floorNo: i,
+                    floorName: i === 0 ? "Ground Floor" : `${i} Floor`,
+                    propertyType: "Residential",
+                    property: `Property ${i + 1}`,
+                    area: "95.5",
+                    quantity: Number.parseInt(wing.noOfProperties) / Number.parseInt(wing.noOfFloors),
+                })),
+            })),
+
+            // Project-approved banks
+            projectApprovedBanksInfo: banks.map((bank) => ({
+                bankName: bank.bankName,
+                branchName: bank.branchName,
+                contactPerson: bank.contactPerson,
+                contactNumber: bank.contactNumber,
+            })),
+
+            // Disbursement bank details
+            disbursementBanksDetail: banks.map((bank) => ({
+                accountName: bank.bankName,
+                bankName: bank.bankName,
+                branchName: bank.branchName,
+                ifsc: bank.ifsc || "",
+                accountType: "SAVINGS",
+                accountNo: "0000000000",
+                disbursementLetterHead: bank.letterHeadFile || null, // support if uploaded
+            })),
+
+            // Amenities
+            amenities: amenities.map((a) => ({
+                amenityName: a,
+            })),
+
+            // Documents
+            documents: documents.map((doc) => ({
+                documentType: doc.type,
+                documentTitle: doc.title,
+                document: doc.file,
+            })),
+
+            // Disbursements
+            disbursements: disbursements.map((d) => ({
+                disbursementTitle: d.title,
+                description: d.description || "",
+                percentage: Number.parseFloat(d.percentage),
+            })),
+
+            // Letterhead file
+            letterHeadFile: documents.find((d) => d.type === "LetterHead")?.file || null,
         }
-        addFloor(floorData)
 
-        // Add flats
-        for (let j = 0; j < Number.parseInt(wing.noOfProperties) / Number.parseInt(wing.noOfFloors); j++) {
-          const flatData = {
-            propertyId: uuidv4(),
-            projectId,
-            wingId: wing.wingId,
-            floorId: floorData.floorId,
-            unitNumber: `${wing.wingName}-${i}${j + 1}`,
-            status: "VACANT",
-            area: 1000,
-            bhk: "2BHK",
-            isDeleted: false,
-          }
-          addFlat(flatData)
+            console.log("[v1] Creating project with:", projectData)
+            const response = await projectService.createProject(projectData)
+
+            console.log("[v1] Project created successfully:", response)
+            success("Project registered successfully!")
+            navigate("/projects")
+        } catch (err) {
+            console.error("[v1] Error creating project:", err)
+            error(err.message || "Failed to create project. Please try again.")
+        } finally {
+            setIsSubmitting(false)
         }
-      }
-    })
+    }
 
-    // Add banks
-    banks.forEach((bank) => {
-      addBankDetail({
-        bankDetailId: bank.bankDetailId,
-        projectId,
-        ...bank,
-        isDeleted: false,
-      })
-    })
-
-    // Add disbursements
-    disbursements.forEach((d) => {
-      addDisbursement({
-        disbursementId: d.disbursementId,
-        projectId,
-        disbursementTitle: d.title,
-        description: d.description,
-        percentage: Number.parseFloat(d.percentage),
-        isDeleted: false,
-      })
-    })
-
-    // Add documents
-    documents.forEach((doc) => {
-      addDocument({
-        documentId: doc.documentId,
-        projectId,
-        documentType: doc.type,
-        documentTitle: doc.title,
-        documentURL: "/placeholder.svg",
-        isDeleted: false,
-      })
-    })
-
-    success("Project registered successfully!")
-    navigate("/projects")
-  }
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
+      <div className="space-y-4 md:space-y-6 max-w-4xl mx-auto px-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Project Registration</h1>
-          <p className="text-gray-600 mt-1">Complete all steps to register a new project</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Project Registration</h1>
+          <p className="text-gray-600 mt-1 text-sm md:text-base">Complete all steps to register a new project</p>
         </div>
 
-        {/* Stepper */}
-        <Stepper steps={steps} currentStep={currentStep} />
+        <div className="overflow-x-auto -mx-4 md:mx-0">
+          <div className="px-4 md:px-0">
+            <Stepper steps={steps} currentStep={currentStep} />
+          </div>
+        </div>
 
-        {/* Step Content */}
         <Card>
           {currentStep === 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900">Basic Information</h2>
+              <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Basic Information</h2>
               <FormInput
                 label="Project Name"
                 value={basicInfo.projectName}
@@ -275,7 +288,7 @@ export default function RegistrationPage() {
                 placeholder="P52100012345"
                 required
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormInput
                   label="Start Date"
                   type="date"
@@ -311,94 +324,155 @@ export default function RegistrationPage() {
 
           {currentStep === 1 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Wings & Floors</h2>
-                <Button onClick={() => setShowWingModal(true)} variant="primary" size="sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Wings & Floors</h2>
+                <Button
+                  onClick={() => setShowWingModal(true)}
+                  variant="primary"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
                   <Plus size={18} />
                   Add Wing
                 </Button>
               </div>
               {wings.length > 0 ? (
-                <Table
-                  columns={[
-                    { key: "wingName", label: "Wing Name" },
-                    { key: "noOfFloors", label: "Floors" },
-                    { key: "noOfProperties", label: "Properties" },
-                  ]}
-                  data={wings}
-                  actions={(row) => [
-                    {
-                      label: "Delete",
-                      onClick: () => setWings(wings.filter((w) => w.wingId !== row.wingId)),
-                    },
-                  ]}
-                />
+                <div className="overflow-x-auto -mx-4 md:mx-0">
+                  <div className="inline-block min-w-full px-4 md:px-0">
+                    <Table
+                      columns={[
+                        { key: "wingName", label: "Wing Name" },
+                        { key: "noOfFloors", label: "Floors" },
+                        { key: "noOfProperties", label: "Properties" },
+                      ]}
+                      data={wings}
+                      actions={(row) => [
+                        {
+                          label: "Delete",
+                          onClick: () => setWings(wings.filter((w) => w.wingId !== row.wingId)),
+                        },
+                      ]}
+                    />
+                  </div>
+                </div>
               ) : (
-                <p className="text-gray-600 text-center py-8">No wings added yet</p>
+                <p className="text-gray-600 text-center py-8 text-sm md:text-base">No wings added yet</p>
               )}
             </div>
           )}
 
           {currentStep === 2 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Bank Information</h2>
-                <Button onClick={() => setShowBankModal(true)} variant="primary" size="sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Bank Information</h2>
+                <Button
+                  onClick={() => setShowBankModal(true)}
+                  variant="primary"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
                   <Plus size={18} />
                   Add Bank
                 </Button>
               </div>
               {banks.length > 0 ? (
-                <Table
-                  columns={[
-                    { key: "bankName", label: "Bank Name" },
-                    { key: "branchName", label: "Branch" },
-                    { key: "contactPerson", label: "Contact Person" },
-                    { key: "contactNumber", label: "Contact Number" },
-                  ]}
-                  data={banks}
-                  actions={(row) => [
-                    {
-                      label: "Delete",
-                      onClick: () => setBanks(banks.filter((b) => b.bankDetailId !== row.bankDetailId)),
-                    },
-                  ]}
-                />
+                <div className="overflow-x-auto -mx-4 md:mx-0">
+                  <div className="inline-block min-w-full px-4 md:px-0">
+                    <Table
+                      columns={[
+                        { key: "bankName", label: "Bank Name" },
+                        { key: "branchName", label: "Branch" },
+                        { key: "contactPerson", label: "Contact Person" },
+                        { key: "contactNumber", label: "Contact Number" },
+                      ]}
+                      data={banks}
+                      actions={(row) => [
+                        {
+                          label: "Delete",
+                          onClick: () => setBanks(banks.filter((b) => b.bankDetailId !== row.bankDetailId)),
+                        },
+                      ]}
+                    />
+                  </div>
+                </div>
               ) : (
-                <p className="text-gray-600 text-center py-8">No banks added yet</p>
+                <p className="text-gray-600 text-center py-8 text-sm md:text-base">No banks added yet</p>
               )}
             </div>
           )}
 
           {currentStep === 3 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900">Amenities & Documents</h2>
+              <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Amenities & Documents</h2>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {["Gym", "Pool", "Garden", "Parking", "Security", "Club House"].map((amenity) => (
-                    <button
-                      key={amenity}
-                      onClick={() =>
-                        setAmenities((prev) =>
-                          prev.includes(amenity) ? prev.filter((a) => a !== amenity) : [...prev, amenity],
-                        )
-                      }
-                      className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                        amenities.includes(amenity)
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                    >
-                      {amenity}
-                    </button>
-                  ))}
+                <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">Amenities</label>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {["Gym", "Pool", "Garden", "Parking", "Security", "Club House"].map((amenity) => (
+                      <button
+                        key={amenity}
+                        onClick={() =>
+                          setAmenities((prev) =>
+                            prev.includes(amenity) ? prev.filter((a) => a !== amenity) : [...prev, amenity],
+                          )
+                        }
+                        className={`px-3 py-1 rounded-full text-sm md:text-base font-medium transition ${
+                          amenities.includes(amenity)
+                            ? "bg-indigo-600 text-white"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                      >
+                        {amenity}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t pt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Add Custom Amenity</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={customAmenity}
+                        onChange={(e) => setCustomAmenity(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            handleAddCustomAmenity()
+                          }
+                        }}
+                        placeholder="Enter amenity name"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                      />
+                      <Button onClick={handleAddCustomAmenity} variant="primary" size="sm" className="w-full sm:w-auto">
+                        <Plus size={18} />
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                  {amenities.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+                      {amenities.map((amenity) => (
+                        <div key={amenity} className="flex items-center gap-2 px-3 py-1 bg-indigo-100 rounded-full">
+                          <span className="text-sm text-indigo-900">{amenity}</span>
+                          <button
+                            onClick={() => setAmenities(amenities.filter((a) => a !== amenity))}
+                            className="text-indigo-600 hover:text-indigo-900 font-bold"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Documents</label>
-                  <Button onClick={() => setShowDocModal(true)} variant="primary" size="sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-4">
+                  <label className="block text-sm md:text-base font-medium text-gray-700">Documents</label>
+                  <Button
+                    onClick={() => setShowDocModal(true)}
+                    variant="primary"
+                    size="sm"
+                    className="w-full sm:w-auto text-xs sm:text-sm"
+                  >
                     <Plus size={18} />
                     Add Document
                   </Button>
@@ -408,15 +482,20 @@ export default function RegistrationPage() {
                     {documents.map((doc) => (
                       <div
                         key={doc.documentId}
-                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border border-gray-200 rounded-lg gap-2"
                       >
-                        <div>
-                          <p className="font-medium text-gray-900">{doc.title}</p>
-                          <p className="text-xs text-gray-600">{doc.type}</p>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 text-sm md:text-base">{doc.title}</p>
+                          <div className="flex flex-col sm:flex-row sm:gap-4 text-xs md:text-sm text-gray-600 mt-1">
+                            <p>{doc.type}</p>
+                            <p>
+                              {doc.file.name} ({(doc.file.size / 1024 / 1024).toFixed(2)} MB)
+                            </p>
+                          </div>
                         </div>
                         <button
                           onClick={() => setDocuments(documents.filter((d) => d.documentId !== doc.documentId))}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 flex-shrink-0"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -424,7 +503,7 @@ export default function RegistrationPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-600 text-center py-8">No documents added yet</p>
+                  <p className="text-gray-600 text-center py-8 text-sm md:text-base">No documents added yet</p>
                 )}
               </div>
             </div>
@@ -432,46 +511,55 @@ export default function RegistrationPage() {
 
           {currentStep === 4 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Disbursements</h2>
-                <Button onClick={() => setShowDisbursementModal(true)} variant="primary" size="sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Disbursements</h2>
+                <Button
+                  onClick={() => setShowDisbursementModal(true)}
+                  variant="primary"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
                   <Plus size={18} />
                   Add Disbursement
                 </Button>
               </div>
               {disbursements.length > 0 ? (
                 <>
-                  <Table
-                    columns={[
-                      { key: "title", label: "Title" },
-                      { key: "description", label: "Description" },
-                      { key: "percentage", label: "Percentage" },
-                    ]}
-                    data={disbursements}
-                    actions={(row) => [
-                      {
-                        label: "Delete",
-                        onClick: () =>
-                          setDisbursements(disbursements.filter((d) => d.disbursementId !== row.disbursementId)),
-                      },
-                    ]}
-                  />
+                  <div className="overflow-x-auto -mx-4 md:mx-0">
+                    <div className="inline-block min-w-full px-4 md:px-0">
+                      <Table
+                        columns={[
+                          { key: "title", label: "Title" },
+                          { key: "description", label: "Description" },
+                          { key: "percentage", label: "Percentage" },
+                        ]}
+                        data={disbursements}
+                        actions={(row) => [
+                          {
+                            label: "Delete",
+                            onClick: () =>
+                              setDisbursements(disbursements.filter((d) => d.disbursementId !== row.disbursementId)),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm font-medium text-blue-900">
+                    <p className="text-sm md:text-base font-medium text-blue-900">
                       Total: {disbursements.reduce((sum, d) => sum + Number.parseFloat(d.percentage), 0)}%
                     </p>
                   </div>
                 </>
               ) : (
-                <p className="text-gray-600 text-center py-8">No disbursements added yet</p>
+                <p className="text-gray-600 text-center py-8 text-sm md:text-base">No disbursements added yet</p>
               )}
             </div>
           )}
 
           {currentStep === 5 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900">Review & Submit</h2>
-              <div className="space-y-3 text-sm">
+              <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Review & Submit</h2>
+              <div className="space-y-3 text-sm md:text-base">
                 <p>
                   <span className="font-medium text-gray-900">Project Name:</span> {basicInfo.projectName}
                 </p>
@@ -490,23 +578,22 @@ export default function RegistrationPage() {
                 </p>
               </div>
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-900">All information is ready to be submitted</p>
+                <p className="text-sm md:text-base text-green-900">All information is ready to be submitted</p>
               </div>
             </div>
           )}
         </Card>
 
-        {/* Navigation Buttons */}
-        <div className="flex items-center justify-between">
-          <Button onClick={handlePrev} variant="secondary" disabled={currentStep === 0}>
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <Button onClick={handlePrev} variant="secondary" disabled={currentStep === 0} className="w-full sm:w-auto">
             Previous
           </Button>
           {currentStep === steps.length - 1 ? (
-            <Button onClick={handleSubmit} variant="success">
-              Submit Project
+            <Button onClick={handleSubmit} variant="success" disabled={isSubmitting} className="w-full sm:w-auto">
+              {isSubmitting ? "Submitting..." : "Submit Project"}
             </Button>
           ) : (
-            <Button onClick={handleNext} variant="primary">
+            <Button onClick={handleNext} variant="primary" className="w-full sm:w-auto">
               Next
             </Button>
           )}
@@ -531,11 +618,11 @@ export default function RegistrationPage() {
             value={wingForm.noOfProperties}
             onChange={(e) => setWingForm({ ...wingForm, noOfProperties: e.target.value })}
           />
-          <div className="flex gap-2 justify-end mt-4">
-            <Button onClick={() => setShowWingModal(false)} variant="secondary">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end mt-4">
+            <Button onClick={() => setShowWingModal(false)} variant="secondary" className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button onClick={handleAddWing} variant="primary">
+            <Button onClick={handleAddWing} variant="primary" className="w-full sm:w-auto">
               Add Wing
             </Button>
           </div>
@@ -567,11 +654,11 @@ export default function RegistrationPage() {
             value={bankForm.ifsc}
             onChange={(e) => setBankForm({ ...bankForm, ifsc: e.target.value })}
           />
-          <div className="flex gap-2 justify-end mt-4">
-            <Button onClick={() => setShowBankModal(false)} variant="secondary">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end mt-4">
+            <Button onClick={() => setShowBankModal(false)} variant="secondary" className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button onClick={handleAddBank} variant="primary">
+            <Button onClick={handleAddBank} variant="primary" className="w-full sm:w-auto">
               Add Bank
             </Button>
           </div>
@@ -592,11 +679,36 @@ export default function RegistrationPage() {
               { value: "BasementPlan", label: "Basement Plan" },
             ]}
           />
-          <div className="flex gap-2 justify-end mt-4">
-            <Button onClick={() => setShowDocModal(false)} variant="secondary">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
+            <input
+              type="file"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  const allowedExtensions = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"]
+                  const fileExtension = "." + file.name.split(".").pop().toLowerCase()
+                  const isValidType = allowedExtensions.includes(fileExtension)
+
+                  if (!isValidType) {
+                    error(`Invalid file type. Only ${allowedExtensions.join(", ")} are allowed`)
+                    e.target.value = ""
+                    return
+                  }
+                  setDocForm({ ...docForm, file })
+                }
+              }}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">Supported: PDF, DOC, DOCX, JPG, JPEG, PNG</p>
+            {docForm.file && <p className="text-xs text-green-600 mt-1">Selected: {docForm.file.name}</p>}
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end mt-4">
+            <Button onClick={() => setShowDocModal(false)} variant="secondary" className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button onClick={handleAddDocument} variant="primary">
+            <Button onClick={handleAddDocument} variant="primary" className="w-full sm:w-auto">
               Add Document
             </Button>
           </div>
@@ -619,11 +731,11 @@ export default function RegistrationPage() {
             value={disbursementForm.percentage}
             onChange={(e) => setDisbursementForm({ ...disbursementForm, percentage: e.target.value })}
           />
-          <div className="flex gap-2 justify-end mt-4">
-            <Button onClick={() => setShowDisbursementModal(false)} variant="secondary">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end mt-4">
+            <Button onClick={() => setShowDisbursementModal(false)} variant="secondary" className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button onClick={handleAddDisbursement} variant="primary">
+            <Button onClick={handleAddDisbursement} variant="primary" className="w-full sm:w-auto">
               Add Disbursement
             </Button>
           </div>

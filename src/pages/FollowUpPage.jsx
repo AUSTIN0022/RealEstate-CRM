@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react"
 import { useData } from "../contexts/DataContext"
-import { useToast } from "../components/ui/Toast"
 import { useAuth } from "../contexts/AuthContext"
+import { useToast } from "../components/ui/Toast"
 import { AppLayout } from "../components/layout/AppLayout"
 import { StatCard } from "../components/ui/Card"
 import { Card } from "../components/ui/Card"
@@ -98,7 +98,7 @@ const FollowUpTable = ({ followUps, columns, viewMode, onComplete, onViewTimelin
   if (followUps.length === 0) {
     return (
       <tr>
-        <td colSpan={columns.length + 2} className="px-6 py-8 text-center text-gray-500">
+        <td colSpan={columns.length + 2} className="px-4 md:px-6 py-8 text-center text-gray-500 text-sm md:text-base">
           {viewMode === VIEW_MODES.TODAY ? "No tasks for today" : "No follow-ups"}
         </td>
       </tr>
@@ -116,7 +116,7 @@ const FollowUpTable = ({ followUps, columns, viewMode, onComplete, onViewTimelin
           isComplete ? "bg-gray-50 opacity-60" : ""
         } ${isOverdue ? "bg-red-50" : ""}`}
       >
-        <td className="px-6 py-4">
+        <td className="px-4 md:px-6 py-4">
           {viewMode === VIEW_MODES.TODAY && !isComplete ? (
             <button
               onClick={() => onComplete(followUp.followUpId)}
@@ -132,12 +132,12 @@ const FollowUpTable = ({ followUps, columns, viewMode, onComplete, onViewTimelin
         {columns.map((col) => (
           <td
             key={col.key}
-            className={`px-6 py-4 text-sm text-gray-900 ${isComplete ? "line-through text-gray-500" : ""}`}
+            className={`px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900 ${isComplete ? "line-through text-gray-500" : ""}`}
           >
             {col.render(followUp[col.key], followUp)}
           </td>
         ))}
-        <td className="px-6 py-4 text-sm">
+        <td className="px-4 md:px-6 py-4 text-xs md:text-sm">
           <button
             onClick={() => onViewTimeline(followUp)}
             className="text-indigo-600 hover:text-indigo-700 font-medium"
@@ -183,11 +183,11 @@ const AddFollowUpModal = ({ isOpen, onClose, form, setForm, enquiries, getEnquir
         rows={3}
       />
 
-      <div className="flex gap-2 justify-end pt-4">
-        <Button onClick={onClose} variant="secondary">
+      <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-4">
+        <Button onClick={onClose} variant="secondary" className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button onClick={onSubmit} variant="primary">
+        <Button onClick={onSubmit} variant="primary" className="w-full sm:w-auto">
           Create Follow-Up
         </Button>
       </div>
@@ -232,11 +232,11 @@ const CompleteFollowUpModal = ({ isOpen, onClose, selectedFollowUp, getEnquiryIn
         hint="Leave empty if no further follow-up is needed"
       />
 
-      <div className="flex gap-2 justify-end pt-4">
-        <Button onClick={onClose} variant="secondary">
+      <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-4">
+        <Button onClick={onClose} variant="secondary" className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button onClick={onConfirm} variant="primary">
+        <Button onClick={onConfirm} variant="primary" className="w-full sm:w-auto">
           Mark as Completed
         </Button>
       </div>
@@ -484,7 +484,7 @@ export default function FollowUpPage() {
       {
         key: "notes",
         label: "Description",
-        render: (val) => <p className="truncate max-w-xs">{val || "-"}</p>,
+        render: (val) => <p className="truncate max-w-xs text-xs md:text-sm">{val || "-"}</p>,
       },
     ],
     [getEnquiryInfo],
@@ -492,21 +492,25 @@ export default function FollowUpPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 md:space-y-6">
+        {/* Header - Improved responsive layout */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Today's Tasks</h1>
-            <p className="text-gray-600 mt-1">Track and manage follow-ups for enquiries</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Today's Tasks</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">Track and manage follow-ups for enquiries</p>
           </div>
-          <Button onClick={() => setShowAddModal(true)} variant="primary">
-            <Plus size={20} />
+          {/* <Button
+            onClick={() => setShowAddModal(true)}
+            variant="primary"
+            className="w-full sm:w-auto text-sm md:text-base"
+          >
+            <Plus size={18} />
             Add Follow-Up
-          </Button>
+          </Button> */}
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Stats cards - Improved responsive grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-4">
           <StatCard
             icon="AlertCircle"
             label="Overdue"
@@ -530,47 +534,56 @@ export default function FollowUpPage() {
           />
         </div>
 
-        {/* View Mode Buttons */}
-        <div className="flex gap-2">
+        {/* View mode buttons - Responsive layout */}
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => setViewMode(VIEW_MODES.TODAY)}
             variant={viewMode === VIEW_MODES.TODAY ? "primary" : "secondary"}
+            className="text-sm flex-1 sm:flex-none"
           >
             Today's Tasks
           </Button>
           <Button
             onClick={() => setViewMode(VIEW_MODES.ALL)}
             variant={viewMode === VIEW_MODES.ALL ? "primary" : "secondary"}
+            className="text-sm flex-1 sm:flex-none"
           >
             All Follow-Ups
           </Button>
         </div>
 
-        {/* Follow-Ups Table */}
+        {/* Follow-up table with improved responsive overflow */}
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 w-12"></th>
-                  {columns.map((col) => (
-                    <th key={col.key} className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                      {col.label}
+          <div className="overflow-x-auto -mx-4 md:mx-0">
+            <div className="inline-block min-w-full px-4 md:px-0">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-900 w-12"></th>
+                    {columns.map((col) => (
+                      <th
+                        key={col.key}
+                        className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-900 whitespace-nowrap"
+                      >
+                        {col.label}
+                      </th>
+                    ))}
+                    <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-900">
+                      Actions
                     </th>
-                  ))}
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <FollowUpTable
-                  followUps={displayFollowUps}
-                  columns={columns}
-                  viewMode={viewMode}
-                  onComplete={handleCompleteFollowUp}
-                  onViewTimeline={handleViewTimeline}
-                />
-              </tbody>
-            </table>
+                  </tr>
+                </thead>
+                <tbody>
+                  <FollowUpTable
+                    followUps={displayFollowUps}
+                    columns={columns}
+                    viewMode={viewMode}
+                    onComplete={handleCompleteFollowUp}
+                    onViewTimeline={handleViewTimeline}
+                  />
+                </tbody>
+              </table>
+            </div>
           </div>
         </Card>
 
@@ -596,7 +609,7 @@ export default function FollowUpPage() {
           onConfirm={handleConfirmComplete}
         />
 
-        {/* Timeline Modal - Two Column */}
+        {/* Timeline Modal - Improved responsive layout */}
         <TwoColumnModal
           isOpen={showTimelineModal}
           onClose={() => setShowTimelineModal(false)}
@@ -606,20 +619,20 @@ export default function FollowUpPage() {
               <div className="space-y-6 px-2 overflow-y-auto max-h-[calc(90vh-200px)]">
                 <ModalSection title="Follow-Up Details" icon={Calendar} iconColor="text-indigo-600">
                   <div className="space-y-4">
-                    <div className="flex gap-6">
+                    <div className="flex flex-col sm:flex-row sm:gap-6">
                       <div className="flex-1">
-                        <p className="text-sm text-gray-600 mb-1">Enquiry</p>
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-xs md:text-sm text-gray-600 mb-1">Enquiry</p>
+                        <p className="text-sm md:text-base font-semibold text-gray-900">
                           {getEnquiryInfo(selectedFollowUp.enquiryId).clientName}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs md:text-sm text-gray-600">
                           Unit: {getEnquiryInfo(selectedFollowUp.enquiryId).unitNumber}
                         </p>
                       </div>
 
                       <div className="flex-1">
-                        <p className="text-sm text-gray-600 mb-1">Follow-Up Date</p>
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-xs md:text-sm text-gray-600 mb-1">Follow-Up Date</p>
+                        <p className="text-sm md:text-base font-semibold text-gray-900">
                           {formatDate(selectedFollowUp.followUpDate)}
                         </p>
                       </div>
@@ -628,7 +641,7 @@ export default function FollowUpPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <User size={16} className="text-gray-400" />
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-xs md:text-sm font-semibold text-gray-900">
                           {selectedFollowUp.agentName || "Unassigned"}
                         </p>
                         <span className="text-xs px-2 py-1.5 bg-gray-100 text-gray-600 rounded-full">(Agent)</span>
@@ -637,47 +650,48 @@ export default function FollowUpPage() {
 
                     {selectedFollowUp.notes && (
                       <div>
-                        <p className="text-sm text-gray-600 mb-1">Initial Notes</p>
-                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{selectedFollowUp.notes}</p>
+                        <p className="text-xs md:text-sm text-gray-600 mb-1">Initial Notes</p>
+                        <p className="text-xs md:text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                          {selectedFollowUp.notes}
+                        </p>
                       </div>
                     )}
                   </div>
                 </ModalSection>
                 <ModalSection title="Add New Note" icon={FileText} iconColor="text-green-600">
-                <div className="space-y-3">
+                  <div className="space-y-3">
                     <FormInput
-                        value={nodeForm.body}
-                        onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
-                        placeholder="Enter your note..."
+                      value={nodeForm.body}
+                      onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
+                      placeholder="Enter your note..."
                     />
-                    <div className="flex gap-6">
-                        <div className="flex-1">
-                            <FormSelect
-                                label="Event Tag"
-                                value={nodeForm.eventTag}
-                                onChange={(e) => setNodeForm({ ...nodeForm, eventTag: e.target.value })}
-                                options={Object.entries(FOLLOWUP_EVENT_TAGS).map(([key, value]) => ({
-                                    value: value,
-                                    label: value,
-                                }))}
-                                required
-                            />
-                        </div>
-                        <div className="flex-1">
-                            <FormInput
-                                label="Next Follow-Up Date & Time"
-                                type="datetime-local"
-                                value={nodeForm.followUpDateTime}
-                                onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
-                            />
-                        </div>
+                    <div className="flex flex-col sm:flex-row sm:gap-6">
+                      <div className="flex-1">
+                        <FormSelect
+                          label="Event Tag"
+                          value={nodeForm.eventTag}
+                          onChange={(e) => setNodeForm({ ...nodeForm, eventTag: e.target.value })}
+                          options={Object.entries(FOLLOWUP_EVENT_TAGS).map(([key, value]) => ({
+                            value: value,
+                            label: value,
+                          }))}
+                          required
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <FormInput
+                          label="Next Follow-Up Date & Time"
+                          type="datetime-local"
+                          value={nodeForm.followUpDateTime}
+                          onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
+                        />
+                      </div>
                     </div>
                     <Button onClick={handleAddNote} variant="primary" className="w-full">
-                        Add Note
+                      Add Note
                     </Button>
-                </div>
+                  </div>
                 </ModalSection>
-
               </div>
             )
           }

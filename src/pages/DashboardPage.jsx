@@ -1,5 +1,3 @@
-"use client"
-
 import { useMemo } from "react"
 import { useData } from "../contexts/DataContext"
 import { useAuth } from "../contexts/AuthContext"
@@ -92,15 +90,13 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
+      <div className="space-y-4 md:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back! Here's your real estate overview.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1 text-sm md:text-base">Welcome back! Here's your real estate overview.</p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           <StatCard
             icon={Building2}
             label="Total Projects"
@@ -119,47 +115,56 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Unit Status Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+          {/* Unit Status Chart - Improved responsive height and margins */}
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Unit Status by Project</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={unitStatusData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="vacant" fill="#10b981" />
-                <Bar dataKey="booked" fill="#3b82f6" />
-                <Bar dataKey="registered" fill="#ef4444" />
-              </BarChart>
-            </ResponsiveContainer>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Unit Status by Project</h3>
+            <div className="overflow-x-auto -mx-4 md:mx-0">
+              <div className="min-h-[250px] md:min-h-[300px] px-4 md:px-0">
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={unitStatusData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={80} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="vacant" fill="#10b981" />
+                    <Bar dataKey="booked" fill="#3b82f6" />
+                    <Bar dataKey="registered" fill="#ef4444" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </Card>
 
-          {/* Monthly Enquiries Chart */}
+          {/* Monthly Enquiries Chart - Improved responsive height and margins */}
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Enquiries</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyEnquiriesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="enquiries" stroke="#4f46e5" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Monthly Enquiries</h3>
+            <div className="overflow-x-auto -mx-4 md:mx-0">
+              <div className="min-h-[250px] md:min-h-[300px] px-4 md:px-0">
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={monthlyEnquiriesData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="enquiries" stroke="#4f46e5" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </Card>
         </div>
 
-        {/* Recent Activity */}
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-          <Table columns={activityColumns} data={recentActivity} />
+          <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Recent Activity</h3>
+          <div className="overflow-x-auto -mx-4 md:mx-0">
+            <div className="inline-block min-w-full px-4 md:px-0">
+              <Table columns={activityColumns} data={recentActivity} />
+            </div>
+          </div>
         </Card>
       </div>
     </AppLayout>
   )
 }
-

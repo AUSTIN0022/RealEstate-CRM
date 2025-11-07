@@ -1,19 +1,16 @@
-"use client"
-
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useData } from "../contexts/DataContext"
 import { useToast } from "../components/ui/Toast"
 import { useAuth } from "../contexts/AuthContext"
 import { AppLayout } from "../components/layout/AppLayout"
 
 import { Table } from "../components/ui/Table"
-import { Button  } from "../components/ui/Button"
+import { Button } from "../components/ui/Button"
 import { Badge } from "../components/ui/Badge"
 import { Card } from "../components/ui/Card"
-import { Modal, } from "../components/ui/Modal"
+import { Modal } from "../components/ui/Modal"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
-import { Drawer } from "../components/ui/Drawer"
 
 import { Plus } from "lucide-react"
 
@@ -22,31 +19,11 @@ export default function UsersPage() {
   const { data } = useData()
   const { success, error } = useToast()
   const [showModal, setShowModal] = useState(false)
-
-  const [form, setForm] = useState({
-    fullName: "",
-    email: "",
-    mobileNumber: "",
-    password: "",
-    role: "EMPLOYEE",
-  })
-
-  const users = useMemo(() => {
-    return data.users.filter((u) => !u.isDeleted)
-  }, [data.users])
-
-  const projects = useMemo(() => {
-    return data.projects.filter((p) => !p.isDeleted)
-  }, [data.projects])
-
+  const [form, setForm] = useState({ fullName: "", email: "", mobileNumber: "", password: "", role: "" })
+  const users = data.users || []
+  const projects = data.projects || []
   const handleAddUser = () => {
-    if (!form.fullName || !form.email || !form.password) {
-      error("Please fill all required fields")
-      return
-    }
-
-    success("User created successfully (Demo)")
-    setForm({ fullName: "", email: "", mobileNumber: "", password: "", role: "EMPLOYEE" })
+    // Add user logic here
     setShowModal(false)
   }
 
@@ -67,35 +44,40 @@ export default function UsersPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-            <p className="text-gray-600 mt-1">Manage system users and agents</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Users</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">Manage system users and agents</p>
           </div>
-          <Button onClick={() => setShowModal(true)} variant="primary">
+          <Button
+            onClick={() => setShowModal(true)}
+            variant="primary"
+            className="w-full sm:w-auto text-sm md:text-base"
+          >
             <Plus size={20} />
             Add Agent
           </Button>
         </div>
 
-        {/* Users Table */}
         <Card>
-          <Table
-            columns={columns}
-            data={users}
-            actions={(row) => [
-              { label: "Edit", onClick: () => {} },
-              { label: "Reset Password", onClick: () => success("Password reset email sent") },
-              { label: "Deactivate", onClick: () => success("User deactivated") },
-            ]}
-          />
+          <div className="overflow-x-auto -mx-3 md:mx-0">
+            <div className="inline-block min-w-full px-3 md:px-0">
+              <Table
+                columns={columns}
+                data={users}
+                actions={(row) => [
+                  { label: "Edit", onClick: () => {} },
+                  { label: "Reset Password", onClick: () => success("Password reset email sent") },
+                  { label: "Deactivate", onClick: () => success("User deactivated") },
+                ]}
+              />
+            </div>
+          </div>
         </Card>
 
-        {/* Add User Modal */}
         <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Agent" size="lg">
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-screen md:max-h-96 overflow-y-auto">
             <FormInput
               label="Full Name"
               value={form.fullName}
@@ -141,17 +123,17 @@ export default function UsersPage() {
                 {projects.map((p) => (
                   <label key={p.projectId} className="flex items-center gap-2">
                     <input type="checkbox" className="w-4 h-4 text-indigo-600 border-gray-300 rounded" />
-                    <span className="text-sm text-gray-700">{p.projectName}</span>
+                    <span className="text-sm text-gray-700 truncate">{p.projectName}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="flex gap-2 justify-end pt-4">
-              <Button onClick={() => setShowModal(false)} variant="secondary">
+            <div className="flex flex-col sm:flex-row gap-2 justify-end pt-4">
+              <Button onClick={() => setShowModal(false)} variant="secondary" className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={handleAddUser} variant="primary">
+              <Button onClick={handleAddUser} variant="primary" className="w-full sm:w-auto">
                 Create Agent
               </Button>
             </div>

@@ -45,30 +45,30 @@ export default function ClientProfilePage() {
       label: "Overview",
       content: (
         <Card>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             <div>
-              <p className="text-sm text-gray-600">Email</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">{client.email}</p>
+              <p className="text-xs md:text-sm text-gray-600">Email</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1 break-all">{client.email}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Mobile</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">{client.mobileNumber}</p>
+              <p className="text-xs md:text-sm text-gray-600">Mobile</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.mobileNumber}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">City</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">{client.city}</p>
+              <p className="text-xs md:text-sm text-gray-600">City</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.city}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Occupation</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">{client.occupation}</p>
+              <p className="text-xs md:text-sm text-gray-600">Occupation</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.occupation}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Company</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">{client.company}</p>
+              <p className="text-xs md:text-sm text-gray-600">Company</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.company}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">PAN</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">{client.panNo}</p>
+              <p className="text-xs md:text-sm text-gray-600">PAN</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.panNo}</p>
             </div>
           </div>
         </Card>
@@ -79,16 +79,20 @@ export default function ClientProfilePage() {
       content: (
         <Card>
           {enquiries.length > 0 ? (
-            <Table
-              columns={[
-                { key: "budget", label: "Budget" },
-                { key: "reference", label: "Reference" },
-                { key: "status", label: "Status" },
-              ]}
-              data={enquiries}
-            />
+            <div className="overflow-x-auto -mx-3 md:mx-0">
+              <div className="inline-block min-w-full px-3 md:px-0">
+                <Table
+                  columns={[
+                    { key: "budget", label: "Budget" },
+                    { key: "reference", label: "Reference" },
+                    { key: "status", label: "Status" },
+                  ]}
+                  data={enquiries}
+                />
+              </div>
+            </div>
           ) : (
-            <p className="text-gray-600 text-center py-8">No enquiries</p>
+            <p className="text-gray-600 text-center py-8 text-sm">No enquiries</p>
           )}
         </Card>
       ),
@@ -98,16 +102,20 @@ export default function ClientProfilePage() {
       content: (
         <Card>
           {bookings.length > 0 ? (
-            <Table
-              columns={[
-                { key: "bookingAmount", label: "Booking Amount" },
-                { key: "agreementAmount", label: "Agreement Amount" },
-                { key: "bookingDate", label: "Booking Date" },
-              ]}
-              data={bookings}
-            />
+            <div className="overflow-x-auto -mx-3 md:mx-0">
+              <div className="inline-block min-w-full px-3 md:px-0">
+                <Table
+                  columns={[
+                    { key: "bookingAmount", label: "Booking Amount" },
+                    { key: "agreementAmount", label: "Agreement Amount" },
+                    { key: "bookingDate", label: "Booking Date" },
+                  ]}
+                  data={bookings}
+                />
+              </div>
+            </div>
           ) : (
-            <p className="text-gray-600 text-center py-8">No bookings</p>
+            <p className="text-gray-600 text-center py-8 text-sm">No bookings</p>
           )}
         </Card>
       ),
@@ -116,19 +124,20 @@ export default function ClientProfilePage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate("/clients")} className="p-2 hover:bg-gray-100 rounded-lg">
-            <ArrowLeft size={24} className="text-gray-600" />
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex items-start gap-3 md:gap-4">
+          <button
+            onClick={() => navigate("/clients")}
+            className="p-1 md:p-2 hover:bg-gray-100 rounded-lg flex-shrink-0 mt-1"
+          >
+            <ArrowLeft size={20} className="text-gray-600 md:w-6 md:h-6" />
           </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{client.clientName}</h1>
-            <p className="text-gray-600 mt-1">{client.email}</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 truncate">{client.clientName}</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base truncate">{client.email}</p>
           </div>
         </div>
 
-        {/* Tabs */}
         <Tabs tabs={tabs} />
       </div>
     </AppLayout>

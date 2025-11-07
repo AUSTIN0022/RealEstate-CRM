@@ -1,4 +1,4 @@
-
+"use client"
 
 import { useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
@@ -8,7 +8,6 @@ import { AppLayout } from "../components/layout/AppLayout"
 import { Modal } from "../components/ui/Modal"
 import { FormInput } from "../components/ui/FormInput"
 import { Card } from "../components/ui/Card"
-import { Tabs } from "../components/ui/Tabs"
 import { Table } from "../components/ui/Table"
 import { Button } from "../components/ui/Button"
 import { Plus, Search, User, Briefcase, FileText, MapPin } from "lucide-react"
@@ -122,20 +121,24 @@ export default function ClientsPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 md:space-y-6">
+        {/* Header - Improved responsive layout */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-            <p className="text-gray-600 mt-1">Manage all clients</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Clients</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">Manage all clients</p>
           </div>
-          <Button onClick={() => setShowModal(true)} variant="primary">
+          <Button
+            onClick={() => setShowModal(true)}
+            variant="primary"
+            className="w-full sm:w-auto text-sm md:text-base"
+          >
             <Plus size={20} />
             Add Client
           </Button>
         </div>
 
-        {/* Search */}
+        {/* Search bar - Improved responsive */}
         <div className="relative">
           <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
           <input
@@ -143,34 +146,38 @@ export default function ClientsPage() {
             placeholder="Search by name, mobile, or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none text-sm"
           />
         </div>
 
-        {/* Clients Table */}
+        {/* Clients table - Improved responsive overflow handling */}
         <Card>
-          <Table
-            columns={columns}
-            data={clients}
-            onRowClick={(row) => navigate(`/clients/${row.clientId}`)}
-            actions={(row) => [
-              {
-                label: "View Profile",
-                onClick: () => navigate(`/clients/${row.clientId}`),
-              },
-              {
-                label: "Edit",
-                onClick: () => {
-                  setForm(row)
-                  setEditingId(row.clientId)
-                  setShowModal(true)
-                },
-              },
-            ]}
-          />
+          <div className="overflow-x-auto -mx-4 md:mx-0">
+            <div className="inline-block min-w-full px-4 md:px-0">
+              <Table
+                columns={columns}
+                data={clients}
+                onRowClick={(row) => navigate(`/clients/${row.clientId}`)}
+                actions={(row) => [
+                  {
+                    label: "View Profile",
+                    onClick: () => navigate(`/clients/${row.clientId}`),
+                  },
+                  {
+                    label: "Edit",
+                    onClick: () => {
+                      setForm(row)
+                      setEditingId(row.clientId)
+                      setShowModal(true)
+                    },
+                  },
+                ]}
+              />
+            </div>
+          </div>
         </Card>
 
-        {/* Add/Edit Client Modal - Two Column Layout */}
+        {/* Add/Edit Client Modal - Two Column Layout with responsive stacking */}
         <Modal
           isOpen={showModal}
           onClose={() => {
@@ -203,7 +210,7 @@ export default function ClientsPage() {
                     required
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormInput
                       label="Email"
                       type="email"
@@ -307,7 +314,8 @@ export default function ClientsPage() {
 
                 <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
                   <p className="text-xs text-blue-700">
-                    <span className="font-semibold">Note:</span> Document details are optional but recommended for compliance purposes.
+                    <span className="font-semibold">Note:</span> Document details are optional but recommended for
+                    compliance purposes.
                   </p>
                 </div>
               </div>
@@ -318,7 +326,12 @@ export default function ClientsPage() {
                   <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
                     <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       Client Summary
                     </h4>
@@ -330,7 +343,7 @@ export default function ClientsPage() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Created</span>
                         <span className="font-medium text-gray-900">
-                          {data.clients.find(c => c.clientId === editingId)?.createdDate || 'N/A'}
+                          {data.clients.find((c) => c.clientId === editingId)?.createdDate || "N/A"}
                         </span>
                       </div>
                     </div>
@@ -340,7 +353,7 @@ export default function ClientsPage() {
             </div>
           }
           footer={
-            <div className="flex gap-3 justify-end">
+            <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end">
               <Button
                 onClick={() => {
                   setShowModal(false)
@@ -348,13 +361,11 @@ export default function ClientsPage() {
                 }}
                 variant="outline"
                 size="md"
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button
-                onClick={handleAddClient}
-                size="md"
-              >
+              <Button onClick={handleAddClient} size="md" className="w-full sm:w-auto">
                 {editingId ? "Update" : "Create"} Client
               </Button>
             </div>

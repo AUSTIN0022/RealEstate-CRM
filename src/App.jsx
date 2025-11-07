@@ -73,7 +73,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/projects/:slug"
+        path="/projects/:projectId"
         element={
           <ProtectedRoute>
             <ProjectDetailPage />
