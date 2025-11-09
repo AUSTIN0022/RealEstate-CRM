@@ -1,7 +1,7 @@
 const API_BASE_URL = "https://realestate.ysminfosolution.com/api"
 
 export const apiClient = {
-  // ✅ Always read tokens from one place: "propease_auth"
+  
   getAuthToken: () => {
     const auth = localStorage.getItem("propease_auth")
     if (!auth) return null
@@ -22,7 +22,7 @@ export const apiClient = {
     }
   },
 
-  // ✅ When new tokens come in, update them inside the same object
+  
   setTokens: (accessToken, refreshToken) => {
     const existing = localStorage.getItem("propease_auth")
     const parsed = existing ? JSON.parse(existing) : {}
@@ -50,13 +50,11 @@ export const apiClient = {
     const token = this.getAuthToken()
     if (token) {
       headers["Authorization"] = `Bearer ${token}`
-      console.log("[apiClient] Using Bearer token:", token)
     } else {
       console.warn("[apiClient] No access token found in localStorage")
     }
 
     try {
-        console.log("[apiClient] Full Bearer token used:", headers["Authorization"])
       const response = await fetch(url, {
         ...options,
         headers,
@@ -83,7 +81,7 @@ export const apiClient = {
     }
   },
 
-  // ✅ Handles both empty and non-JSON responses safely
+  
   async handleResponse(response) {
     const text = await response.text()
     let data = null

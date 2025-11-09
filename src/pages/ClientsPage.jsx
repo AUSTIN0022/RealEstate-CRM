@@ -1,8 +1,5 @@
-"use client"
-
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { useData } from "../contexts/DataContext"
 import { useToast } from "../components/ui/Toast"
 import { AppLayout } from "../components/layout/AppLayout"
 import { Modal } from "../components/ui/Modal"
@@ -11,16 +8,18 @@ import { Card } from "../components/ui/Card"
 import { Table } from "../components/ui/Table"
 import { Button } from "../components/ui/Button"
 import { Plus, Search, User, Briefcase, FileText, MapPin } from "lucide-react"
-import { v4 as uuidv4 } from "uuid"
+import { clientService } from "../services/clientService"
+import { SkeletonLoader } from "../components/ui/SkeletonLoader"
 import { validateEmail, validatePhone, validatePAN, validateAadhar } from "../utils/helpers"
 
 export default function ClientsPage() {
   const navigate = useNavigate()
-  const { data, addClient, updateClient } = useData()
   const { success, error } = useToast()
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingId, setEditingId] = useState(null)
+  const [clients, setClients] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const [form, setForm] = useState({
     clientName: "",
@@ -35,8 +34,25 @@ export default function ClientsPage() {
     aadharNo: "",
   })
 
-  const clients = useMemo(() => {
-    let result = data.clients.filter((c) => !c.isDeleted)
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoading(true)
+        const data = await clientService.getClientsBasicInfo()
+        setClients(data || [])
+      } catch (err) {
+        console.error("[v0] Failed to fetch clients:", err)
+        error("Failed to load clients")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchClients()
+  }, [])
+
+  const filteredClients = useMemo(() => {
+    let result = clients
     if (searchTerm) {
       result = result.filter(
         (c) =>
@@ -45,14 +61,10 @@ export default function ClientsPage() {
           c.email.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
-    return result.sort((a, b) => {
-      const dateA = new Date(a.createdDate || 0)
-      const dateB = new Date(b.createdDate || 0)
-      return dateB - dateA
-    })
-  }, [data.clients, searchTerm])
+    return result
+  }, [clients, searchTerm])
 
-  const handleAddClient = () => {
+  const handleAddClient = async () => {
     if (!form.clientName || !form.email || !form.mobileNumber) {
       error("Please fill all required fields")
       return
@@ -78,21 +90,24 @@ export default function ClientsPage() {
       return
     }
 
-    if (editingId) {
-      updateClient(editingId, form)
-      success("Client updated successfully")
-    } else {
-      addClient({
-        clientId: uuidv4(),
-        ...form,
-        createdDate: new Date().toISOString().split("T")[0],
-        isDeleted: false,
-      })
-      success("Client created successfully")
-    }
+    try {
+      if (editingId) {
+        await clientService.updateClient(editingId, form)
+        success("Client updated successfully")
+      } else {
+        await clientService.createClient(form)
+        success("Client created successfully")
+      }
 
-    resetForm()
-    setShowModal(false)
+      const data = await clientService.getClientsBasicInfo()
+      setClients(data || [])
+
+      resetForm()
+      setShowModal(false)
+    } catch (err) {
+      console.error("[v0] Failed to save client:", err)
+      error("Failed to save client")
+    }
   }
 
   const resetForm = () => {
@@ -119,26 +134,32 @@ export default function ClientsPage() {
     { key: "occupation", label: "Occupation" },
   ]
 
+  if (loading) {
+    return (
+      <AppLayout>
+        <SkeletonLoader type="table" count={5} />
+      </AppLayout>
+    )
+  }
+
   return (
     <AppLayout>
       <div className="space-y-4 md:space-y-6">
-        {/* Header - Improved responsive layout */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-0">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Clients</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Manage all clients</p>
           </div>
-          <Button
+          {/* <Button
             onClick={() => setShowModal(true)}
             variant="primary"
             className="w-full sm:w-auto text-sm md:text-base"
           >
             <Plus size={20} />
             Add Client
-          </Button>
+          </Button> */}
         </div>
 
-        {/* Search bar - Improved responsive */}
         <div className="relative">
           <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
           <input
@@ -150,13 +171,12 @@ export default function ClientsPage() {
           />
         </div>
 
-        {/* Clients table - Improved responsive overflow handling */}
         <Card>
           <div className="overflow-x-auto -mx-4 md:mx-0">
             <div className="inline-block min-w-full px-4 md:px-0">
               <Table
                 columns={columns}
-                data={clients}
+                data={filteredClients}
                 onRowClick={(row) => navigate(`/clients/${row.clientId}`)}
                 actions={(row) => [
                   {
@@ -177,7 +197,6 @@ export default function ClientsPage() {
           </div>
         </Card>
 
-        {/* Add/Edit Client Modal - Two Column Layout with responsive stacking */}
         <Modal
           isOpen={showModal}
           onClose={() => {
@@ -193,7 +212,6 @@ export default function ClientsPage() {
           columnGap="lg"
           leftColumn={
             <div className="space-y-6">
-              {/* Personal Information */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -236,7 +254,6 @@ export default function ClientsPage() {
                 </div>
               </div>
 
-              {/* Address Information */}
               <div className="pt-6 border-t border-gray-200">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -263,7 +280,6 @@ export default function ClientsPage() {
           }
           rightColumn={
             <div className="space-y-6">
-              {/* Professional Information */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -287,7 +303,6 @@ export default function ClientsPage() {
                 </div>
               </div>
 
-              {/* Document Information */}
               <div className="pt-6 border-t border-gray-200">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
@@ -320,7 +335,6 @@ export default function ClientsPage() {
                 </div>
               </div>
 
-              {/* Summary Card - Only show when editing */}
               {editingId && (
                 <div className="pt-6 border-t border-gray-200">
                   <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
@@ -339,12 +353,6 @@ export default function ClientsPage() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Client ID</span>
                         <span className="font-medium text-gray-900 font-mono text-xs">{editingId.slice(0, 8)}...</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Created</span>
-                        <span className="font-medium text-gray-900">
-                          {data.clients.find((c) => c.clientId === editingId)?.createdDate || "N/A"}
-                        </span>
                       </div>
                     </div>
                   </div>

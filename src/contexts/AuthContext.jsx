@@ -1,16 +1,16 @@
 import React, { createContext, useState, useEffect } from "react"
 import { authService } from "../services/authService"
 import { apiClient } from "../services/apiClient"
-import { useToast } from "../components/ui/Toast" // ✅ import toast hook
+import { useToast } from "../components/ui/Toast" // import toast hook
 
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const { error } = useToast() // ✅ for session expiry message
+  const { error } = useToast() // for session expiry message
 
-  // ✅ 1. Load stored user from localStorage
+  // 1. Load stored user from localStorage
   useEffect(() => {
     const storedAuth = localStorage.getItem("propease_auth")
     if (storedAuth) {
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(false)
   }, [])
 
-  // ✅ 2. Auto-refresh token every 10 minutes
+  // 2. Auto-refresh token every 10 minutes
   useEffect(() => {
     const interval = setInterval(async () => {
       const refreshToken = apiClient.getRefreshToken()
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
 
           if (response.ok) {
             const data = await response.json()
-            // ✅ update user + apiClient
+            // update user + apiClient
             const updatedUser = { ...user, accessToken: data.accessToken, refreshToken: data.refreshToken }
             setUser(updatedUser)
             localStorage.setItem("propease_auth", JSON.stringify(updatedUser))
@@ -59,14 +59,14 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(interval)
   }, [user])
 
-  // ✅ 3. Handle session expiry cleanly
+  // 3. Handle session expiry cleanly
   const handleSessionExpired = () => {
     logout()
     error("Your session has expired. Please log in again.")
     window.location.href = "/login"
   }
 
-  // ✅ 4. Login
+  // 4. Login
   const login = async (username, password) => {
     try {
       const result = await authService.login(username, password)
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // ✅ 5. Logout
+  //  5. Logout
   const logout = () => {
     authService.logout()
     setUser(null)

@@ -1,31 +1,51 @@
-"use client"
-
-import { useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { useData } from "../contexts/DataContext"
 import { AppLayout } from "../components/layout/AppLayout"
 import { Card } from "../components/ui/Card"
 import { Tabs } from "../components/ui/Tabs"
 import { Table } from "../components/ui/Table"
 import { Button } from "../components/ui/Button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
+import { clientService } from "../services/clientService"
+import { SkeletonLoader } from "../components/ui/SkeletonLoader"
+import { useToast } from "../components/ui/Toast"
 
 export default function ClientProfilePage() {
   const { clientId } = useParams()
   const navigate = useNavigate()
-  const { data } = useData()
+  const { error: showError } = useToast()
 
-  const client = useMemo(() => {
-    return data.clients.find((c) => c.clientId === clientId && !c.isDeleted)
-  }, [data.clients, clientId])
+  const [client, setClient] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [enquiries] = useState([])
+  const [bookings] = useState([])
 
-  const enquiries = useMemo(() => {
-    return data.enquiries.filter((e) => e.clientId === clientId && !e.isDeleted)
-  }, [data.enquiries, clientId])
+  useEffect(() => {
+    const fetchClientDetails = async () => {
+      try {
+        setLoading(true)
+        const clientData = await clientService.getClientById(clientId)
+        setClient(clientData)
+      } catch (err) {
+        console.error("[v0] Failed to fetch client details:", err)
+        showError("Failed to load client details")
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  const bookings = useMemo(() => {
-    return data.bookings.filter((b) => b.clientId === clientId && !b.isDeleted)
-  }, [data.bookings, clientId])
+    if (clientId) {
+      fetchClientDetails()
+    }
+  }, [clientId])
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <SkeletonLoader type="profile" count={5} />
+      </AppLayout>
+    )
+  }
 
   if (!client) {
     return (
@@ -64,11 +84,11 @@ export default function ClientProfilePage() {
             </div>
             <div>
               <p className="text-xs md:text-sm text-gray-600">Company</p>
-              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.company}</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.company || "N/A"}</p>
             </div>
             <div>
-              <p className="text-xs md:text-sm text-gray-600">PAN</p>
-              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.panNo}</p>
+              <p className="text-xs md:text-sm text-gray-600">Address</p>
+              <p className="text-base md:text-lg font-semibold text-gray-900 mt-1">{client.address || "N/A"}</p>
             </div>
           </div>
         </Card>

@@ -104,14 +104,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* <Route
         path="/bookings"
         element={
           <ProtectedRoute>
             <BookingsPage />
           </ProtectedRoute>
         }
-      />
+      /> */}
       <Route
         path="/clients"
         element={
@@ -128,7 +128,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* <Route
         path="/payments"
         element={
           <ProtectedRoute>
@@ -143,7 +143,7 @@ function AppRoutes() {
             <NotificationsPage />
           </ProtectedRoute>
         }
-      />
+      /> */}
       <Route
         path="/users"
         element={
@@ -152,14 +152,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* <Route
         path="/settings"
         element={
           <ProtectedRoute requiredRole={ROLES.ADMIN}>
             <SettingsPage />
           </ProtectedRoute>
         }
-      />
+      /> */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

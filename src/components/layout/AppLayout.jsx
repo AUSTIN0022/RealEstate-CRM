@@ -38,11 +38,11 @@ export const AppLayout = ({ children }) => {
     { icon: BookOpen, label: "Enquiry Book", path: "/enquiry-book" },
     { icon: Phone, label: "Follow-Up", path: "/follow-up" },
     { icon: Users, label: "Clients", path: "/clients" },
-    { icon: Home, label: "Bookings", path: "/bookings" },
-    { icon: DollarSign, label: "Payments", path: "/payments" },
-    { icon: Bell, label: "Notifications", path: "/notifications" },
+    // { icon: Home, label: "Bookings", path: "/bookings" },
+    // { icon: DollarSign, label: "Payments", path: "/payments" },
+    // { icon: Bell, label: "Notifications", path: "/notifications" },
     ...(isAdmin ? [{ icon: Users, label: "Users", path: "/users" }] : []),
-    ...(isAdmin ? [{ icon: Settings, label: "Settings", path: "/settings" }] : []),
+    // ...(isAdmin ? [{ icon: Settings, label: "Settings", path: "/settings" }] : []),
   ]
 
   const handleLogout = () => {
@@ -66,7 +66,7 @@ export const AppLayout = ({ children }) => {
           bg-white border-r border-gray-200 transition-all duration-300 flex flex-col overflow-hidden md:overflow-visible`}
       >
         {/* Logo */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           {(sidebarOpen || window.innerWidth >= 768) && (
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center">
