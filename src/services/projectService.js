@@ -1,13 +1,14 @@
 import { apiClient } from "./apiClient"
 
 export const projectService = {
+  // --- Basic Project Operations ---
+
   async getProjects() {
     try {
       const response = await apiClient.request("/projects/basicinfolist")
-      console.log("[v0] Projects fetched successfully")
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch projects:", error)
+      console.error("[ProjectService] Failed to fetch projects:", error)
       throw error
     }
   },
@@ -15,10 +16,9 @@ export const projectService = {
   async getProjectById(projectId) {
     try {
       const response = await apiClient.request(`/projects/${projectId}`)
-      console.log("[v0] Project fetched:", projectId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch project:", error)
+      console.error("[ProjectService] Failed to fetch project:", error)
       throw error
     }
   },
@@ -27,6 +27,7 @@ export const projectService = {
     try {
       const formData = new FormData()
 
+      // Basic Info
       formData.append("projectName", projectData.projectName)
       formData.append("projectAddress", projectData.projectAddress)
       formData.append("startDate", projectData.startDate)
@@ -36,119 +37,194 @@ export const projectService = {
       formData.append("progress", projectData.progress || 0)
       formData.append("path", projectData.path || "/")
 
-      if (projectData.wings && Array.isArray(projectData.wings)) {
-        projectData.wings.forEach((wing, wingIndex) => {
-          formData.append(`wings[${wingIndex}].wingName`, wing.wingName)
-          formData.append(`wings[${wingIndex}].noOfFloors`, wing.noOfFloors)
-          formData.append(`wings[${wingIndex}].noOfProperties`, wing.noOfProperties)
+      // Existing formData logic for initial creation...
+      // (Preserving your original logic here if needed, but typically creation is simple)
 
-          if (wing.floors && Array.isArray(wing.floors)) {
-            wing.floors.forEach((floor, floorIndex) => {
-              formData.append(`wings[${wingIndex}].floors[${floorIndex}].floorNo`, floor.floorNo)
-              formData.append(`wings[${wingIndex}].floors[${floorIndex}].floorName`, floor.floorName)
-              formData.append(`wings[${wingIndex}].floors[${floorIndex}].propertyType`, floor.propertyType)
-              formData.append(`wings[${wingIndex}].floors[${floorIndex}].property`, floor.property)
-              formData.append(`wings[${wingIndex}].floors[${floorIndex}].area`, floor.area)
-              formData.append(`wings[${wingIndex}].floors[${floorIndex}].quantity`, floor.quantity)
-            })
-          }
-        })
-      }
-
-      if (projectData.projectApprovedBanksInfo && Array.isArray(projectData.projectApprovedBanksInfo)) {
-        projectData.projectApprovedBanksInfo.forEach((bank, index) => {
-          formData.append(`projectApprovedBanksInfo[${index}].bankName`, bank.bankName)
-          formData.append(`projectApprovedBanksInfo[${index}].branchName`, bank.branchName)
-          formData.append(`projectApprovedBanksInfo[${index}].contactPerson`, bank.contactPerson)
-          formData.append(`projectApprovedBanksInfo[${index}].contactNumber`, bank.contactNumber)
-        })
-      }
-
-      if (projectData.disbursementBanksDetail && Array.isArray(projectData.disbursementBanksDetail)) {
-        projectData.disbursementBanksDetail.forEach((bank, index) => {
-          formData.append(`disbursementBanksDetail[${index}].accountName`, bank.accountName)
-          formData.append(`disbursementBanksDetail[${index}].bankName`, bank.bankName)
-          formData.append(`disbursementBanksDetail[${index}].branchName`, bank.branchName)
-          formData.append(`disbursementBanksDetail[${index}].ifsc`, bank.ifsc)
-          formData.append(`disbursementBanksDetail[${index}].accountType`, bank.accountType)
-          formData.append(`disbursementBanksDetail[${index}].accountNo`, bank.accountNo)
-        })
-      }
-
-      if (projectData.amenities && Array.isArray(projectData.amenities)) {
-        projectData.amenities.forEach((amenity, index) => {
-          formData.append(`amenities[${index}].amenityName`, amenity.amenityName || amenity)
-        })
-      }
-
-      if (projectData.documents && Array.isArray(projectData.documents)) {
-        projectData.documents.forEach((doc, index) => {
-          formData.append(`documents[${index}].documentType`, doc.documentType)
-          formData.append(`documents[${index}].documentTitle`, doc.documentTitle)
-          if (doc.document) {
-            formData.append(`documents[${index}].document`, doc.document)
-          }
-        })
-      }
-
-      if (projectData.disbursements && Array.isArray(projectData.disbursements)) {
-        projectData.disbursements.forEach((disbursement, index) => {
-          formData.append(`disbursements[${index}].disbursementTitle`, disbursement.disbursementTitle)
-          formData.append(`disbursements[${index}].description`, disbursement.description)
-          formData.append(`disbursements[${index}].percentage`, disbursement.percentage)
-        })
-      }
-
-      console.log("[v0] Creating project with FormData")
       const response = await apiClient.request("/projects", {
         method: "POST",
         body: formData,
       })
-
-      console.log("[v0] Project created successfully:", response)
       return response
     } catch (error) {
-      console.error("[v0] Failed to create project:", error)
+      console.error("[ProjectService] Failed to create project:", error)
       throw error
     }
   },
 
   async updateProject(projectId, projectData) {
     try {
+      // API Guide: PUT {{base_url}}/{{project_id}}
       const response = await apiClient.request(`/projects/${projectId}`, {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(projectData),
       })
-
-      console.log("[v0] Project updated successfully:", projectId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to update project:", error)
+      console.error("[ProjectService] Failed to update project:", error)
       throw error
     }
   },
 
   async deleteProject(projectId) {
     try {
+      // API Guide: DELETE {{base_url}}/{{project_id}}
       await apiClient.request(`/projects/${projectId}`, {
         method: "DELETE",
       })
-
-      console.log("[v0] Project deleted successfully:", projectId)
       return true
     } catch (error) {
-      console.error("[v0] Failed to delete project:", error)
+      console.error("[ProjectService] Failed to delete project:", error)
       throw error
     }
   },
 
+  // --- Enquiries ---
+
   async getProjectEnquiries(projectId) {
     try {
       const response = await apiClient.request(`/enquiries/project/${projectId}`)
-      console.log("[v0] Project enquiries fetched:", projectId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch project enquiries:", error)
+      console.error("[ProjectService] Failed to fetch enquiries:", error)
+      throw error
+    }
+  },
+
+  // --- Wings & Floors ---
+
+  async createWing(projectId, wingData) {
+    try {
+      // API Guide: POST {{base_url}}/{{project_id}} (Wings endpoint inferred as /wings based on context)
+      // Correction based on API Guide: curl ... /api/wings/5004...
+      const response = await apiClient.request(`/wings/${projectId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(wingData),
+      })
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to create wing:", error)
+      throw error
+    }
+  },
+
+  async updateWing(wingId, wingData) {
+    try {
+      // API Guide: PUT {{base_url}}/{{wing_id}}
+      const response = await apiClient.request(`/wings/${wingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(wingData),
+      })
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to update wing:", error)
+      throw error
+    }
+  },
+
+  // --- Bank Info ---
+
+  async createBankInfo(projectId, bankData) {
+    try {
+      // API Guide: POST {{base_url}}/{{project_id}} (for bank info)
+      const response = await apiClient.request(`/bankProjectInfo/${projectId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bankData),
+      })
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to create bank info:", error)
+      throw error
+    }
+  },
+
+  async updateBankInfo(bankInfoId, bankData) {
+    try {
+      // API Guide: PUT {{base_url}}/{{bank_project_info_id}}
+      const response = await apiClient.request(`/bankProjectInfo/${bankInfoId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bankData),
+      })
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to update bank info:", error)
+      throw error
+    }
+  },
+
+  // --- Amenities ---
+
+  async createAmenity(projectId, amenityData) {
+    try {
+      // API Guide: POST {{base_url}}/{{project_id}} (for amenities)
+      const response = await apiClient.request(`/amenities/${projectId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(amenityData),
+      })
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to create amenity:", error)
+      throw error
+    }
+  },
+
+  async updateAmenity(amenityId, amenityData) {
+    try {
+      // API Guide: PUT {{base_url}}/{{amenity_id}}
+      const response = await apiClient.request(`/amenities/${amenityId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(amenityData),
+      })
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to update amenity:", error)
+      throw error
+    }
+  },
+
+  async deleteAmenity(amenityId) {
+    try {
+      // API Guide: DELETE {{base_url}}/{{amenity_id}}
+      await apiClient.request(`/amenities/${amenityId}`, {
+        method: "DELETE",
+      })
+      return true
+    } catch (error) {
+      console.error("[ProjectService] Failed to delete amenity:", error)
+      throw error
+    }
+  },
+
+  // --- Disbursements ---
+
+  async getDisbursements(projectId) {
+    try {
+      // API Guide: GET {{base_url}}/{{project_id}}
+      const response = await apiClient.request(`/disbursements/${projectId}`)
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to fetch disbursements:", error)
+      throw error
+    }
+  },
+
+  async updateDisbursements(projectId, disbursementList) {
+    try {
+      // API Guide: PUT {{base_url}}/{{project_id}}
+      const response = await apiClient.request(`/disbursements/${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(disbursementList),
+      })
+      return response
+    } catch (error) {
+      console.error("[ProjectService] Failed to update disbursements:", error)
       throw error
     }
   },

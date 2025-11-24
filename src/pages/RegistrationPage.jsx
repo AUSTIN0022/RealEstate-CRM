@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useData } from "../contexts/DataContext"
 import { useToast } from "../components/ui/Toast"
 import { AppLayout } from "../components/layout/AppLayout"
 import { FormTextarea } from "../components/ui/FormTextarea"
@@ -11,7 +10,7 @@ import { Card } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Eye } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { validateMahareraNo } from "../utils/helpers"
 import { projectService } from "../services/projectService"
@@ -21,6 +20,8 @@ export default function RegistrationPage() {
   const { success, error } = useToast()
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewFile, setPreviewFile] = useState(null)
 
   // Step 1: Basic Info
   const [basicInfo, setBasicInfo] = useState({
@@ -155,107 +156,111 @@ export default function RegistrationPage() {
     success("Disbursement added successfully")
   }
 
+  const handlePreviewDocument = (file) => {
+    setPreviewFile(file)
+    setShowPreviewModal(true)
+  }
+
   const handleSubmit = async () => {
     const totalPercentage = disbursements.reduce((sum, d) => sum + Number.parseFloat(d.percentage), 0)
     if (totalPercentage !== 100) {
-        error("Total disbursement percentage must equal 100%")
-        return
+      error("Total disbursement percentage must equal 100%")
+      return
     }
 
     if (wings.length === 0) {
-        error("Please add at least one wing")
-        return
+      error("Please add at least one wing")
+      return
     }
 
     if (banks.length === 0) {
-        error("Please add at least one bank")
-        return
+      error("Please add at least one bank")
+      return
     }
 
     setIsSubmitting(true)
 
     try {
-        const projectData = {
-            projectName: basicInfo.projectName,
-            projectAddress: basicInfo.address,
-            startDate: basicInfo.startDate,
-            completionDate: basicInfo.completionDate,
-            mahareraNo: basicInfo.mahareraNo || "",
-            status: basicInfo.status || "UPCOMING",
-            progress: 0,
-            path: "/",
+      const projectData = {
+        projectName: basicInfo.projectName,
+        projectAddress: basicInfo.address,
+        startDate: basicInfo.startDate,
+        completionDate: basicInfo.completionDate,
+        mahareraNo: basicInfo.mahareraNo || "",
+        status: basicInfo.status || "UPCOMING",
+        progress: 0,
+        path: "/",
 
-            // Wings with floors
-            wings: wings.map((wing) => ({
-                wingName: wing.wingName,
-                noOfFloors: Number.parseInt(wing.noOfFloors),
-                noOfProperties: Number.parseInt(wing.noOfProperties),
-                floors: Array.from({ length: Number.parseInt(wing.noOfFloors) }, (_, i) => ({
-                    floorNo: i,
-                    floorName: i === 0 ? "Ground Floor" : `${i} Floor`,
-                    propertyType: "Residential",
-                    property: `Property ${i + 1}`,
-                    area: "95.5",
-                    quantity: Number.parseInt(wing.noOfProperties) / Number.parseInt(wing.noOfFloors),
-                })),
-            })),
+        // Wings with floors
+        wings: wings.map((wing) => ({
+          wingName: wing.wingName,
+          noOfFloors: Number.parseInt(wing.noOfFloors),
+          noOfProperties: Number.parseInt(wing.noOfProperties),
+          floors: Array.from({ length: Number.parseInt(wing.noOfFloors) }, (_, i) => ({
+            floorNo: i,
+            floorName: i === 0 ? "Ground Floor" : `${i} Floor`,
+            propertyType: "Residential",
+            property: `Property ${i + 1}`,
+            area: "95.5",
+            quantity: Number.parseInt(wing.noOfProperties) / Number.parseInt(wing.noOfFloors),
+          })),
+        })),
 
-            // Project-approved banks
-            projectApprovedBanksInfo: banks.map((bank) => ({
-                bankName: bank.bankName,
-                branchName: bank.branchName,
-                contactPerson: bank.contactPerson,
-                contactNumber: bank.contactNumber,
-            })),
+        // Project-approved banks
+        projectApprovedBanksInfo: banks.map((bank) => ({
+          bankName: bank.bankName,
+          branchName: bank.branchName,
+          contactPerson: bank.contactPerson,
+          contactNumber: bank.contactNumber,
+        })),
 
-            // Disbursement bank details
-            disbursementBanksDetail: banks.map((bank) => ({
-                accountName: bank.bankName,
-                bankName: bank.bankName,
-                branchName: bank.branchName,
-                ifsc: bank.ifsc || "",
-                accountType: "SAVINGS",
-                accountNo: "0000000000",
-                disbursementLetterHead: bank.letterHeadFile || null, // support if uploaded
-            })),
+        // Disbursement bank details
+        disbursementBanksDetail: banks.map((bank) => ({
+          accountName: bank.bankName,
+          bankName: bank.bankName,
+          branchName: bank.branchName,
+          ifsc: bank.ifsc || "",
+          accountType: "SAVINGS",
+          accountNo: "0000000000",
+          disbursementLetterHead: bank.letterHeadFile || null, // support if uploaded
+        })),
 
-            // Amenities
-            amenities: amenities.map((a) => ({
-                amenityName: a,
-            })),
+        // Amenities
+        amenities: amenities.map((a) => ({
+          amenityName: a,
+        })),
 
-            // Documents
-            documents: documents.map((doc) => ({
-                documentType: doc.type,
-                documentTitle: doc.title,
-                document: doc.file,
-            })),
+        // Documents
+        documents: documents.map((doc) => ({
+          documentType: doc.type,
+          documentTitle: doc.title,
+          document: doc.file,
+        })),
 
-            // Disbursements
-            disbursements: disbursements.map((d) => ({
-                disbursementTitle: d.title,
-                description: d.description || "",
-                percentage: Number.parseFloat(d.percentage),
-            })),
+        // Disbursements
+        disbursements: disbursements.map((d) => ({
+          disbursementTitle: d.title,
+          description: d.description || "",
+          percentage: Number.parseFloat(d.percentage),
+        })),
 
-            // Letterhead file
-            letterHeadFile: documents.find((d) => d.type === "LetterHead")?.file || null,
-        }
+        // Letterhead file
+        letterHeadFile: documents.find((d) => d.type === "LetterHead")?.file || null,
+      }
 
-            console.log("[v1] Creating project with:", projectData)
-            const response = await projectService.createProject(projectData)
+      console.log("[v1] Creating project with:", projectData)
+      const response = await projectService.createProject(projectData)
 
-            console.log("[v1] Project created successfully:", response)
-            success("Project registered successfully!")
-            navigate("/projects")
-        } catch (err) {
-            console.error("[v1] Error creating project:", err)
-            error(err.message || "Failed to create project. Please try again.")
-        } finally {
-            setIsSubmitting(false)
-        }
+      console.log("[v1] Project created successfully:", response)
+      success("Project registered successfully!")
+      navigate("/projects")
+    } catch (err) {
+      console.error("[v1] Error creating project:", err)
+      error(err.message || "Failed to create project. Please try again.")
+    } finally {
+      setIsSubmitting(false)
     }
-
+  }
 
   return (
     <AppLayout>
@@ -493,12 +498,21 @@ export default function RegistrationPage() {
                             </p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => setDocuments(documents.filter((d) => d.documentId !== doc.documentId))}
-                          className="text-red-600 hover:text-red-700 flex-shrink-0"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => handlePreviewDocument(doc.file)}
+                            className="text-indigo-600 hover:text-indigo-700 p-1"
+                            title="Preview document"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            onClick={() => setDocuments(documents.filter((d) => d.documentId !== doc.documentId))}
+                            className="text-red-600 hover:text-red-700 p-1"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -557,47 +571,186 @@ export default function RegistrationPage() {
           )}
 
           {currentStep === 5 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Review & Submit</h2>
-              <div className="space-y-3 text-sm md:text-base">
-                <p>
-                  <span className="font-medium text-gray-900">Project Name:</span> {basicInfo.projectName}
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900">Maharera No:</span> {basicInfo.mahareraNo}
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900">Wings:</span> {wings.length}
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900">Banks:</span> {banks.length}
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900">Disbursements:</span>{" "}
-                  {disbursements.reduce((sum, d) => sum + Number.parseFloat(d.percentage), 0)}%
-                </p>
+
+              {/* Basic Information Section */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-gray-900 text-lg">Basic Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm md:text-base">
+                  <div>
+                    <p className="text-gray-600">Project Name</p>
+                    <p className="font-medium text-gray-900">{basicInfo.projectName}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Maharera Number</p>
+                    <p className="font-medium text-gray-900">{basicInfo.mahareraNo}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Start Date</p>
+                    <p className="font-medium text-gray-900">{basicInfo.startDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Completion Date</p>
+                    <p className="font-medium text-gray-900">{basicInfo.completionDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Status</p>
+                    <p className="font-medium text-gray-900">{basicInfo.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Address</p>
+                    <p className="font-medium text-gray-900">{basicInfo.address || "-"}</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Wings & Floors Section */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-gray-900 text-lg">Wings & Floors ({wings.length})</h3>
+                {wings.length > 0 ? (
+                  <div className="space-y-2">
+                    {wings.map((wing) => (
+                      <div key={wing.wingId} className="bg-gray-50 p-3 rounded text-sm">
+                        <p className="font-medium text-gray-900">{wing.wingName}</p>
+                        <div className="grid grid-cols-2 gap-2 text-gray-600 mt-1">
+                          <p>Floors: {wing.noOfFloors}</p>
+                          <p>Properties: {wing.noOfProperties}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-600">No wings added</p>
+                )}
+              </div>
+
+              {/* Bank Information Section */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-gray-900 text-lg">Bank Information ({banks.length})</h3>
+                {banks.length > 0 ? (
+                  <div className="space-y-2">
+                    {banks.map((bank) => (
+                      <div key={bank.bankDetailId} className="bg-gray-50 p-3 rounded text-sm">
+                        <p className="font-medium text-gray-900">
+                          {bank.bankName} - {bank.branchName}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-600 mt-1 text-xs">
+                          <p>Contact: {bank.contactPerson}</p>
+                          <p>Phone: {bank.contactNumber}</p>
+                          <p>IFSC: {bank.ifsc || "-"}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-600">No banks added</p>
+                )}
+              </div>
+
+              {/* Amenities Section */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-gray-900 text-lg">Amenities</h3>
+                {amenities.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {amenities.map((amenity) => (
+                      <span key={amenity} className="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-full text-sm">
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-600">No amenities selected</p>
+                )}
+              </div>
+
+              {/* Documents Section */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-gray-900 text-lg">Documents ({documents.length})</h3>
+                {documents.length > 0 ? (
+                  <div className="space-y-2">
+                    {documents.map((doc) => (
+                      <div
+                        key={doc.documentId}
+                        className="flex items-start justify-between bg-gray-50 p-3 rounded text-sm"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{doc.title}</p>
+                          <p className="text-gray-600 text-xs mt-1">
+                            {doc.type} - {doc.file.name}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handlePreviewDocument(doc.file)}
+                          className="text-indigo-600 hover:text-indigo-700 p-1 ml-2 flex-shrink-0"
+                          title="Preview document"
+                        >
+                          <Eye size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-600">No documents added</p>
+                )}
+              </div>
+
+              {/* Disbursements Section */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-gray-900 text-lg">Disbursements</h3>
+                {disbursements.length > 0 ? (
+                  <>
+                    <div className="space-y-2">
+                      {disbursements.map((d) => (
+                        <div
+                          key={d.disbursementId}
+                          className="flex justify-between items-center bg-gray-50 p-3 rounded text-sm"
+                        >
+                          <div>
+                            <p className="font-medium text-gray-900">{d.title}</p>
+                            <p className="text-gray-600 text-xs">{d.description || "-"}</p>
+                          </div>
+                          <p className="font-semibold text-indigo-600">{d.percentage}%</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-3 bg-green-50 border border-green-200 rounded">
+                      <p className="font-semibold text-green-900">
+                        Total: {disbursements.reduce((sum, d) => sum + Number.parseFloat(d.percentage), 0)}%
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-gray-600">No disbursements added</p>
+                )}
+              </div>
+
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm md:text-base text-green-900">All information is ready to be submitted</p>
+                <p className="text-sm md:text-base text-green-900 font-medium">
+                  All information is ready to be submitted
+                </p>
               </div>
             </div>
           )}
         </Card>
 
-        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <Button onClick={handlePrev} variant="secondary" disabled={currentStep === 0} className="w-full sm:w-auto">
+        <div className="fixed md:relative bottom-0 md:bottom-auto left-0 right-0 md:left-auto md:right-auto bg-white md:bg-transparent border-t md:border-t-0 border-gray-200 p-4 md:p-0 flex flex-row gap-3 md:gap-3 md:justify-between max-w-4xl mx-auto md:max-w-none">
+          <Button onClick={handlePrev} variant="secondary" disabled={currentStep === 0} className="flex-1 md:flex-none">
             Previous
           </Button>
           {currentStep === steps.length - 1 ? (
-            <Button onClick={handleSubmit} variant="success" disabled={isSubmitting} className="w-full sm:w-auto">
+            <Button onClick={handleSubmit} variant="success" disabled={isSubmitting} className="flex-1 md:flex-none">
               {isSubmitting ? "Submitting..." : "Submit Project"}
             </Button>
           ) : (
-            <Button onClick={handleNext} variant="primary" className="w-full sm:w-auto">
+            <Button onClick={handleNext} variant="primary" className="flex-1 md:flex-none">
               Next
             </Button>
           )}
         </div>
+
+        {/* Add padding to prevent content being hidden behind fixed buttons on mobile */}
+        <div className="h-16 md:h-0" />
 
         {/* Modals */}
         <Modal isOpen={showWingModal} onClose={() => setShowWingModal(false)} title="Add Wing">
@@ -739,6 +892,30 @@ export default function RegistrationPage() {
               Add Disbursement
             </Button>
           </div>
+        </Modal>
+
+        <Modal isOpen={showPreviewModal} onClose={() => setShowPreviewModal(false)} title="Document Preview" size="lg">
+          {previewFile && (
+            <div className="w-full h-96 md:h-[600px] bg-gray-50 rounded-lg overflow-auto">
+              {previewFile.type.startsWith("image/") ? (
+                <img
+                  src={URL.createObjectURL(previewFile) || "/placeholder.svg"}
+                  alt="Preview"
+                  className="w-full h-full object-contain"
+                />
+              ) : previewFile.type === "application/pdf" ? (
+                <iframe src={URL.createObjectURL(previewFile)} className="w-full h-full" title="PDF Preview" />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-gray-500 text-center">
+                    Preview not available for this file type
+                    <br />
+                    <span className="text-sm">File: {previewFile.name}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </Modal>
       </div>
     </AppLayout>

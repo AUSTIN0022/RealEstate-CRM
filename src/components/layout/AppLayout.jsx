@@ -1,4 +1,3 @@
-"use client"
 
 import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
@@ -12,10 +11,7 @@ import {
   BookOpen,
   Phone,
   Users,
-  Home,
-  DollarSign,
   Bell,
-  Settings,
   LogOut,
   Search,
   ChevronDown,

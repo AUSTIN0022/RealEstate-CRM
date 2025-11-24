@@ -1,12 +1,10 @@
-"use client"
-
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToast } from "../components/ui/Toast"
 import { followUpService } from "../services/followUpService"
 import { enquiryService } from "../services/enquiryService"
 import { AppLayout } from "../components/layout/AppLayout"
-import { StatCard } from "../components/ui/Card"
+import { StatCard, CompactStatsRow } from "../components/ui/Card" // Updated import
 import { Card } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
 import { Modal, TwoColumnModal, ModalSection } from "../components/ui/Modal"
@@ -16,7 +14,7 @@ import { Timeline } from "../components/ui/Timeline"
 import { FormSelect } from "../components/ui/FormSelect"
 import { CheckCircle2, Circle, Calendar, User, FileText } from "lucide-react"
 import { formatDateTime } from "../utils/helpers"
-import { SkeletonLoader } from "../components/ui/SkeletonLoader";
+import { SkeletonLoader } from "../components/ui/SkeletonLoader"
 import { FOLLOWUP_EVENT_TAGS } from "../utils/constants"
 
 // Constants
@@ -165,6 +163,9 @@ export default function FollowUpPage() {
     eventTag: FOLLOWUP_EVENT_TAGS.FOLLOW_UP_COMPLETED,
   })
 
+  // Toggle between Design 1 and Design 3
+  const [useCompactStats, setUseCompactStats] = useState(false)
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -290,23 +291,23 @@ export default function FollowUpPage() {
     }
 
     try {
-      const defaultNextDate = new Date(Date.now() + 7*24*60*60*1000).toISOString().split("T")[0];
+      const defaultNextDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
 
-        const nextDate =
-            nodeForm.followUpDateTime && nodeForm.followUpDateTime.trim() !== ""
-                ? nodeForm.followUpDateTime.split("T")[0]
-                : defaultNextDate;
+      const nextDate =
+        nodeForm.followUpDateTime && nodeForm.followUpDateTime.trim() !== ""
+          ? nodeForm.followUpDateTime.split("T")[0]
+          : defaultNextDate
 
-        await followUpService.addFollowUpNode(selectedFollowUp.followUpId, {
-            followUpNextDate: nextDate,
-            body: nodeForm.body,
-            tag: nodeForm.eventTag,
-         })
-        success("Note added successfully")
-        setNodeForm({
-            ...INITIAL_NODE_FORM_STATE,
-            followUpDateTime: new Date().toISOString().slice(0, 16),
-        })
+      await followUpService.addFollowUpNode(selectedFollowUp.followUpId, {
+        followUpNextDate: nextDate,
+        body: nodeForm.body,
+        tag: nodeForm.eventTag,
+      })
+      success("Note added successfully")
+      setNodeForm({
+        ...INITIAL_NODE_FORM_STATE,
+        followUpDateTime: new Date().toISOString().slice(0, 16),
+      })
 
       // Refresh follow-up data
       const updatedFollowUp = await followUpService.getFollowUpById(selectedFollowUp.followUpId)
@@ -373,12 +374,34 @@ export default function FollowUpPage() {
     },
     [error],
   )
- 
+
+  // Prepare stats array for CompactStatsRow
+  const statsArray = useMemo(() => [
+    {
+      label: 'Overdue',
+      value: stats.overdue,
+      trend: stats.overdue > 0 ? 'up' : 'down',
+      trendDirection: stats.overdue > 0 ? 'negative' : 'positive'
+    },
+    {
+      label: "Today's Pending",
+      value: stats.todayPending,
+      trend: stats.todayPending > 0 ? 'up' : 'down',
+      trendDirection: stats.todayPending > 0 ? 'neutral' : 'positive'
+    },
+    {
+      label: 'Completed Today',
+      value: stats.completedToday,
+      trend: stats.completedToday > 0 ? 'up' : 'down',
+      trendDirection: stats.completedToday > 0 ? 'positive' : 'neutral'
+    }
+  ], [stats])
+
   if (loading) {
     return (
       <AppLayout>
-        <SkeletonLoader type={"stat"} count={4}  />
-        <SkeletonLoader type={"list"} count={6}  />
+        <SkeletonLoader type={"stat"} count={4} />
+        <SkeletonLoader type={"list"} count={6} />
       </AppLayout>
     )
   }
@@ -393,29 +416,33 @@ export default function FollowUpPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-4">
-          <StatCard
-            icon="AlertCircle"
-            label="Overdue"
-            value={stats.overdue}
-            trend={stats.overdue > 0 ? "up" : "down"}
-            trendDirection={stats.overdue > 0 ? "negative" : "positive"}
-          />
-          <StatCard
-            icon="Clock"
-            label="Today's Pending"
-            value={stats.todayPending}
-            trend={stats.todayPending > 0 ? "up" : "down"}
-            trendDirection={stats.todayPending > 0 ? "neutral" : "positive"}
-          />
-          <StatCard
-            icon="CheckCircle"
-            label="Completed Today"
-            value={stats.completedToday}
-            trend={stats.completedToday > 0 ? "up" : "down"}
-            trendDirection={stats.completedToday > 0 ? "positive" : "neutral"}
-          />
-        </div>
+        {/* Stats Section - Choose between Design 1 or Design 3 */}
+        {useCompactStats ? (
+          // Design 3: Ultra Compact Single Row
+          <CompactStatsRow stats={statsArray} />
+        ) : (
+          // Design 1: Enhanced Individual Cards
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+            <StatCard
+              label="Overdue"
+              value={stats.overdue}
+              trend={stats.overdue > 0 ? "up" : "down"}
+              trendDirection={stats.overdue > 0 ? "negative" : "positive"}
+            />
+            <StatCard
+              label="Today's Pending"
+              value={stats.todayPending}
+              trend={stats.todayPending > 0 ? "up" : "down"}
+              trendDirection={stats.todayPending > 0 ? "neutral" : "positive"}
+            />
+            <StatCard
+              label="Completed Today"
+              value={stats.completedToday}
+              trend={stats.completedToday > 0 ? "up" : "down"}
+              trendDirection={stats.completedToday > 0 ? "positive" : "neutral"}
+            />
+          </div>
+        )}
 
         <div className="flex gap-2 flex-wrap">
           <Button
@@ -432,6 +459,7 @@ export default function FollowUpPage() {
           >
             All Follow-Ups
           </Button>
+          
         </div>
 
         <Card>
@@ -568,7 +596,14 @@ export default function FollowUpPage() {
           onClose={() => setShowTimelineModal(false)}
           title="Follow-Up Timeline"
           leftContent={
-            selectedFollowUp && (
+            <div className="overflow-y-auto max-h-[calc(90vh-200px)]">
+              <ModalSection title="Activity Timeline" icon={Calendar} iconColor="text-purple-600">
+                <Timeline events={[...timelineEvents].reverse()} />
+              </ModalSection>
+            </div>
+          }
+          rightContent={
+             selectedFollowUp && (
               <div className="space-y-6 px-2 overflow-y-auto max-h-[calc(90vh-200px)]">
                 <ModalSection title="Follow-Up Details" icon={Calendar} iconColor="text-indigo-600">
                   <div className="space-y-4">
@@ -612,10 +647,10 @@ export default function FollowUpPage() {
                       required
                     />
                     <FormInput
-                        type="datetime-local"
-                        label="Next Follow Up Date (optional)"
-                        value={nodeForm.followUpDateTime}
-                        onChange={(e) => setNodeForm({...nodeForm, followUpDateTime: e.target.value})}
+                      type="datetime-local"
+                      label="Next Follow Up Date (optional)"
+                      value={nodeForm.followUpDateTime}
+                      onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
                     />
 
                     <Button onClick={handleAddNote} variant="primary" className="w-full">
@@ -625,13 +660,6 @@ export default function FollowUpPage() {
                 </ModalSection>
               </div>
             )
-          }
-          rightContent={
-            <div className="overflow-y-auto max-h-[calc(90vh-200px)]">
-              <ModalSection title="Activity Timeline" icon={Calendar} iconColor="text-purple-600">
-                <Timeline events={timelineEvents} />
-              </ModalSection>
-            </div>
           }
           columnGap="lg"
         />

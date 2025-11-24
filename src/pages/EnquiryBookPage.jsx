@@ -9,7 +9,8 @@ import { Modal } from "../components/ui/Modal"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
 import { FormTextarea } from "../components/ui/FormTextarea"
-import { Plus, Search } from "lucide-react"
+// Added Filter icon
+import { Plus, Search, Filter } from "lucide-react" 
 import { enquiryService } from "../services/enquiryService"
 import { projectService } from "../services/projectService"
 import { validateEmail, validatePhone } from "../utils/helpers"
@@ -21,10 +22,12 @@ export default function EnquiryBookPage() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  // New state for the filter modal
+  const [showFilterModal, setShowFilterModal] = useState(false) 
   const [searchTerm, setSearchTerm] = useState("")
   const [filters, setFilters] = useState({ project: "", status: "" })
   const [editingId, setEditingId] = useState(null)
-  const [showRemarkModal, setShowRemarkModal] = useState(false)
+  
   const [remarkText, setRemarkText] = useState("")
   const [selectedEnquiry, setSelectedEnquiry] = useState(null)
 
@@ -135,32 +138,6 @@ export default function EnquiryBookPage() {
     }
   }
 
-  const handleAddRemark = async () => {
-    if (!remarkText.trim()) {
-      error("Please enter a remark")
-      return
-    }
-
-    try {
-      const timestamp = new Date().toLocaleString()
-      const updatedRemark = selectedEnquiry.remark
-        ? `${selectedEnquiry.remark}\n[${timestamp}] ${remarkText}`
-        : `[${timestamp}] ${remarkText}`
-
-      await enquiryService.updateEnquiry(selectedEnquiry.enquiryId, { remark: updatedRemark })
-      const updated = enquiries.map((e) =>
-        e.enquiryId === selectedEnquiry.enquiryId ? { ...e, remark: updatedRemark } : e,
-      )
-      setEnquiries(updated)
-      success("Remark added successfully")
-      setShowRemarkModal(false)
-      setRemarkText("")
-    } catch (err) {
-      console.error("Failed to add remark:", err)
-      error(err.message || "Failed to add remark")
-    }
-  }
-
   const resetForm = () => {
     setForm({
       clientName: "",
@@ -220,8 +197,8 @@ export default function EnquiryBookPage() {
   return (
     <AppLayout>
       <div className="space-y-4 md:space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-0">
+        {/* Header - MODIFIED */}
+        <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Enquiry Book</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Manage all client enquiries</p>
@@ -229,15 +206,18 @@ export default function EnquiryBookPage() {
           <Button
             onClick={() => setShowModal(true)}
             variant="primary"
-            className="w-full sm:w-auto text-sm md:text-base"
+            // Responsive classes for the button
+            className="flex-shrink-0 p-2 sm:px-4 sm:py-2 rounded-full sm:rounded-xl text-sm md:text-base"
           >
             <Plus size={18} />
-            Add Enquiry
+            {/* Text hidden on mobile, visible on sm screens and up */}
+            <span className="hidden sm:inline sm:ml-2">Add Enquiry</span>
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
+        {/* Filters - MODIFIED */}
+        <div className="flex flex-row gap-2 md:gap-4">
+          {/* Search Bar */}
           <div className="flex-1 relative min-w-0">
             <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
             <input
@@ -248,10 +228,12 @@ export default function EnquiryBookPage() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none text-sm"
             />
           </div>
+          
+          {/* Desktop Filters - Hidden on mobile */}
           <select
             value={filters.project}
             onChange={(e) => setFilters({ ...filters, project: e.target.value })}
-            className="px-3 md:px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none text-sm flex-1 sm:flex-none"
+            className="hidden sm:block px-3 md:px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none text-sm sm:flex-none"
           >
             <option value="">All Projects</option>
             {projects.map((p) => (
@@ -263,13 +245,22 @@ export default function EnquiryBookPage() {
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 md:px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none text-sm flex-1 sm:flex-none"
+            className="hidden sm:block px-3 md:px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none text-sm sm:flex-none"
           >
             <option value="">All Status</option>
             <option value="ONGOING">Ongoing</option>
             <option value="COMPLETED">Completed</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
+
+          {/* Mobile Filter Button - Visible only on mobile */}
+          <Button
+            onClick={() => setShowFilterModal(true)}
+            variant="outline"
+            className="sm:hidden p-2 rounded-xl border-gray-300"
+          >
+            <Filter size={18} className="text-gray-600" />
+          </Button>
         </div>
 
         {/* Enquiries Table */}
@@ -287,13 +278,6 @@ export default function EnquiryBookPage() {
                       setForm(row)
                       setEditingId(row.enquiryId)
                       setShowModal(true)
-                    },
-                  },
-                  {
-                    label: "Add Remark",
-                    onClick: () => {
-                      setSelectedEnquiry(row)
-                      setShowRemarkModal(true)
                     },
                   },
                 ]}
@@ -525,24 +509,59 @@ export default function EnquiryBookPage() {
           }
         />
 
-        {/* Add Remark Modal */}
-        <Modal isOpen={showRemarkModal} onClose={() => setShowRemarkModal(false)} title="Add Remark">
-          <FormTextarea
-            label="Remark"
-            value={remarkText}
-            onChange={(e) => setRemarkText(e.target.value)}
-            rows={4}
-            placeholder="Enter your remark here..."
-          />
+      
+
+        {/* NEW - Filter Modal (for Mobile) */}
+        <Modal
+          isOpen={showFilterModal}
+          onClose={() => setShowFilterModal(false)}
+          title="Filter Enquiries"
+        >
+          <div className="space-y-4">
+            <FormSelect
+              label="Project"
+              value={filters.project}
+              onChange={(e) => setFilters({ ...filters, project: e.target.value })}
+              options={[
+                // Add "All Projects" option
+                { value: "", label: "All Projects" }, 
+                ...projects.map((p) => ({ value: p.projectId, label: p.projectName })),
+              ]}
+            />
+            <FormSelect
+              label="Status"
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              options={[
+                // Add "All Status" option
+                { value: "", label: "All Status" },
+                { value: "ONGOING", label: "Ongoing" },
+                { value: "COMPLETED", label: "Completed" },
+                { value: "CANCELLED", label: "Cancelled" },
+              ]}
+            />
+          </div>
           <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-4">
-            <Button onClick={() => setShowRemarkModal(false)} variant="secondary" className="w-full sm:w-auto">
-              Cancel
+            <Button
+              onClick={() => {
+                setFilters({ project: "", status: "" })
+                setShowFilterModal(false)
+              }}
+              variant="secondary"
+              className="w-full sm:w-auto"
+            >
+              Clear Filters
             </Button>
-            <Button onClick={handleAddRemark} variant="primary" className="w-full sm:w-auto">
-              Add Remark
+            <Button
+              onClick={() => setShowFilterModal(false)} // Just close, state is already set
+              variant="primary"
+              className="w-full sm:w-auto"
+            >
+              Apply
             </Button>
           </div>
         </Modal>
+
       </div>
     </AppLayout>
   )

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react"
 import { useData } from "../contexts/DataContext"
 import { useToast } from "../components/ui/Toast"
@@ -12,80 +11,149 @@ import { Card } from "../components/ui/Card"
 import { Modal } from "../components/ui/Modal"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
-import { SkeletonLoader } from "../components/ui/SkeletonLoader";
-import { Plus } from "lucide-react"
+import { SkeletonLoader } from "../components/ui/SkeletonLoader"
+import { Plus, Pencil, Loader2 } from "lucide-react"
 
 export default function UsersPage() {
   const { user } = useAuth()
   const { data } = useData()
   const { success, error } = useToast()
+  
+  // State
   const [showModal, setShowModal] = useState(false)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({
+  const [isSubmitting, setIsSubmitting] = useState(false) // Loader state for form actions
+  
+  // Edit Mode States
+  const [isEditing, setIsEditing] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState(null)
+
+  const initialFormState = {
     username: "",
-    employeeName: "",
+    fullName: "",
     email: "",
     mobileNumber: "",
     password: "",
     userType: "EMPLOYEE",
     projectIds: [],
-  })
+    isEnabled: true 
+  }
+
+  const [form, setForm] = useState(initialFormState)
   const projects = data.projects || []
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true)
-        const data = await userService.getAllUsers()
-        setUsers(data || [])
-      } catch (err) {
-        console.error("[v0] Failed to fetch users:", err)
-        error("Failed to load users")
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchUsers()
   }, [])
 
-  const handleAddUser = async () => {
-    if (!form.username || !form.employeeName || !form.email || !form.password) {
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const data = await userService.getAllUsers()
+      setUsers(data || [])
+    } catch (err) {
+      console.error("[v0] Failed to fetch users:", err)
+      error("Failed to load users")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOpenCreateModal = () => {
+    setIsEditing(false)
+    setSelectedUserId(null)
+    setForm(initialFormState)
+    setShowModal(true)
+  }
+
+  const handleOpenEditModal = (userToEdit) => {
+    setIsEditing(true)
+    setSelectedUserId(userToEdit.userId || userToEdit.id)
+    
+    setForm({
+      username: userToEdit.username || "",
+      fullName: userToEdit.fullName || "",
+      email: userToEdit.email || "",
+      mobileNumber: userToEdit.mobileNumber || "",
+      password: "", 
+      userType: userToEdit.userType || userToEdit.role || "EMPLOYEE",
+      projectIds: userToEdit.projectIds || [],
+      isEnabled: userToEdit.enabled !== undefined ? userToEdit.enabled : true
+    })
+    setShowModal(true)
+  }
+
+  const handleSubmit = async () => {
+    if (isEditing) {
+      await handleUpdateUser()
+    } else {
+      await handleCreateUser()
+    }
+  }
+
+  const handleCreateUser = async () => {
+    if (!form.username || !form.fullName || !form.email || !form.password) {
       error("Please fill all required fields")
       return
     }
 
     try {
+      setIsSubmitting(true) // Start loader
       await userService.createEmployee({
         username: form.username,
-        email: form.email,
         password: form.password,
-        employeeName: form.employeeName,
-        mobileNumber: form.mobileNumber,
+        email: form.email,
         userType: form.userType,
+        fullName: form.fullName,
+        mobileNumber: form.mobileNumber,
         projectIds: form.projectIds
       })
 
-      console.log(`ProjectID: ${form.projectIds}`);
       success("Agent created successfully")
-
-      const data = await userService.getAllUsers()
-      setUsers(data || [])
-
-      setForm({
-        username: "",
-        employeeName: "",
-        email: "",
-        mobileNumber: "",
-        password: "",
-        userType: "EMPLOYEE",
-        projectIds: [],
-      })
+      await fetchUsers() 
       setShowModal(false)
     } catch (err) {
       console.error("[v0] Failed to create agent:", err)
       error("Failed to create agent")
+    } finally {
+      setIsSubmitting(false) // Stop loader
+    }
+  }
+
+  const handleUpdateUser = async () => {
+    if (!form.username || !form.fullName || !form.email) {
+      error("Please fill all required fields")
+      return
+    }
+
+    try {
+      setIsSubmitting(true) // Start loader
+      
+      const payload = {
+        username: form.username,
+        email: form.email,
+        userType: form.userType,
+        fullName: form.fullName,
+        mobileNumber: form.mobileNumber,
+        isEnabled: form.isEnabled === "true" || form.isEnabled === true,
+        projectIds: form.projectIds 
+      }
+
+      if (form.password && form.password.trim() !== "") {
+        payload.password = form.password
+      }
+
+      await userService.updateUser(selectedUserId, payload)
+
+      success("User updated successfully")
+      await fetchUsers() 
+      setShowModal(false)
+    } catch (err) {
+      console.error("[v0] Failed to update user:", err)
+      error("Failed to update user")
+    } finally {
+      setIsSubmitting(false) // Stop loader
     }
   }
 
@@ -102,6 +170,20 @@ export default function UsersPage() {
       label: "Status",
       render: (val) => <Badge variant={val ? "success" : "danger"}>{val ? "Active" : "Inactive"}</Badge>,
     },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (_, row) => (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => handleOpenEditModal(row)}
+          className="text-gray-600 hover:text-indigo-600"
+        >
+          <Pencil size={16} />
+        </Button>
+      )
+    }
   ]
 
   if (loading) {
@@ -121,7 +203,7 @@ export default function UsersPage() {
             <p className="text-gray-600 mt-1 text-sm md:text-base">Manage system users and agents</p>
           </div>
           <Button
-            onClick={() => setShowModal(true)}
+            onClick={handleOpenCreateModal}
             variant="primary"
             className="w-full sm:w-auto text-sm md:text-base"
           >
@@ -138,20 +220,27 @@ export default function UsersPage() {
           </div>
         </Card>
 
-        <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Agent" size="lg">
+        <Modal 
+          isOpen={showModal} 
+          onClose={() => !isSubmitting && setShowModal(false)} // Prevent close during submit
+          title={isEditing ? "Edit User" : "Add Agent"} 
+          size="lg"
+        >
           <div className="space-y-4 max-h-screen md:max-h-96 overflow-y-auto">
             <FormInput
               label="Username"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               required
+              disabled={isSubmitting}
             />
 
             <FormInput
-              label="Employee Name"
-              value={form.employeeName}
-              onChange={(e) => setForm({ ...form, employeeName: e.target.value })}
+              label="Employee Full Name"
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
               required
+              disabled={isSubmitting}
             />
 
             <FormInput
@@ -160,41 +249,61 @@ export default function UsersPage() {
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
+              disabled={isSubmitting}
             />
 
             <FormInput
               label="Mobile Number"
               value={form.mobileNumber}
               onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
+              disabled={isSubmitting}
             />
 
             <FormInput
-              label="Password"
+              label={isEditing ? "New Password (leave blank to keep current)" : "Password"}
               type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
+              required={!isEditing}
+              disabled={isSubmitting}
             />
 
-            <FormSelect
-              label="Role"
-              value={form.userType}
-              onChange={(e) => setForm({ ...form, userType: e.target.value })}
-              options={[
-                { value: "EMPLOYEE", label: "Employee" },
-                { value: "ADMIN", label: "Admin" },
-              ]}
-              required
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormSelect
+                label="Role"
+                value={form.userType}
+                onChange={(e) => setForm({ ...form, userType: e.target.value })}
+                options={[
+                  { value: "EMPLOYEE", label: "Employee" },
+                  { value: "ADMIN", label: "Admin" },
+                ]}
+                required
+                disabled={isSubmitting}
+              />
+              
+              <FormSelect
+                label="Status"
+                value={form.isEnabled}
+                onChange={(e) => setForm({ ...form, isEnabled: e.target.value === "true" })}
+                options={[
+                  { value: true, label: "Active" },
+                  { value: false, label: "Inactive" },
+                ]}
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+
              <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Assign Projects</label>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-48 overflow-y-auto border p-2 rounded-md">
                 {projects.map((p) => (
                   <label key={p.projectId} className="flex items-center gap-2">
                     <input 
                       type="checkbox" 
                       className="w-4 h-4 text-indigo-600 border-gray-300 rounded"
                       checked={form.projectIds.includes(p.projectId)}
+                      disabled={isSubmitting}
                       onChange={(e) => {
                         if (e.target.checked) {
                             setForm({ ...form, projectIds: [...form.projectIds, p.projectId] })
@@ -211,11 +320,25 @@ export default function UsersPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 justify-end pt-4">
-              <Button onClick={() => setShowModal(false)} variant="secondary" className="w-full sm:w-auto">
+              <Button 
+                onClick={() => setShowModal(false)} 
+                variant="secondary" 
+                className="w-full sm:w-auto"
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAddUser} variant="primary" className="w-full sm:w-auto">
-                Create Agent
+              <Button 
+                onClick={handleSubmit} 
+                variant="primary" 
+                className="w-full sm:w-auto flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+              >
+                {isSubmitting && <Loader2 className="animate-spin" size={16} />}
+                {isSubmitting 
+                  ? (isEditing ? "Updating..." : "Creating...") 
+                  : (isEditing ? "Update User" : "Create Agent")
+                }
               </Button>
             </div>
           </div>

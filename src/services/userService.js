@@ -103,7 +103,7 @@ export const userService = {
   // Create a new employee (admin only)
   async createEmployee(employeeData) {
     try {
-      const response = await apiClient.request("/admins/employee", {
+      const response = await apiClient.request("/users", {
         method: "POST",
         body: JSON.stringify(employeeData),
       })
