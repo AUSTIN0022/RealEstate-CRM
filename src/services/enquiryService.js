@@ -4,10 +4,10 @@ export const enquiryService = {
   async getAllEnquiries() {
     try {
       const response = await apiClient.request("/enquiries")
-      console.log("[v0] All enquiries fetched")
+      console.log("All enquiries fetched")
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch enquiries:", error)
+      console.error("Failed to fetch enquiries:", error)
       throw error
     }
   },
@@ -15,10 +15,10 @@ export const enquiryService = {
   async getEnquiriesBasicInfo() {
     try {
       const response = await apiClient.request("/enquiries/basicinfolist")
-      console.log("[v0] Enquiries basic info fetched")
+      console.log("Enquiries basic info fetched")
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch enquiries basic info:", error)
+      console.error("Failed to fetch enquiries basic info:", error)
       throw error
     }
   },
@@ -26,13 +26,26 @@ export const enquiryService = {
   async getProjectEnquiries(projectId) {
     try {
       const response = await apiClient.request(`/enquiries/project/${projectId}`)
-      console.log("[v0] Project enquiries fetched:", projectId)
+      console.log("Project enquiries fetched:", projectId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch project enquiries:", error)
+      console.error("Failed to fetch project enquiries:", error)
       throw error
     }
   },
+
+  // --- NEW METHOD ADDED HERE ---
+  async getPropertyOptions(projectId) {
+    try {
+      const response = await apiClient.request(`/enquiries/propertyOptions/forProject/${projectId}`)
+      console.log("Property options fetched for project:", projectId)
+      return response
+    } catch (error) {
+      console.error("Failed to fetch property options:", error)
+      throw error
+    }
+  },
+  // -----------------------------
 
   async createEnquiry(enquiryData) {
     try {
@@ -41,10 +54,10 @@ export const enquiryService = {
         body: JSON.stringify(enquiryData),
       })
 
-      console.log("[v0] Enquiry created successfully")
+      console.log("Enquiry created successfully")
       return response
     } catch (error) {
-      console.error("[v0] Failed to create enquiry:", error)
+      console.error("Failed to create enquiry:", error)
       throw error
     }
   },
@@ -56,10 +69,10 @@ export const enquiryService = {
         body: JSON.stringify(enquiryData),
       })
 
-      console.log("[v0] Enquiry updated successfully:", enquiryId)
+      console.log("Enquiry updated successfully:", enquiryId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to update enquiry:", error)
+      console.error("Failed to update enquiry:", error)
       throw error
     }
   },
@@ -71,10 +84,10 @@ export const enquiryService = {
         body: JSON.stringify(clientInfo),
       })
 
-      console.log("[v0] Enquiry client info updated:", enquiryId)
+      console.log("Enquiry client info updated:", enquiryId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to update enquiry client info:", error)
+      console.error("Failed to update enquiry client info:", error)
       throw error
     }
   },
@@ -85,10 +98,10 @@ export const enquiryService = {
         method: "DELETE",
       })
 
-      console.log("[v0] Enquiry cancelled:", enquiryId)
+      console.log("Enquiry cancelled:", enquiryId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to cancel enquiry:", error)
+      console.error("Failed to cancel enquiry:", error)
       throw error
     }
   },

@@ -1,5 +1,6 @@
+"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
 import {
@@ -11,6 +12,7 @@ import {
   BookOpen,
   Phone,
   Users,
+  User,
   Bell,
   LogOut,
   Search,
@@ -25,6 +27,12 @@ export const AppLayout = ({ children }) => {
   const navigate = useNavigate()
   const location = useLocation()
 
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
+  }, [location.pathname])
+
   const isAdmin = user?.role === ROLES.ADMIN
 
   const menuItems = [
@@ -37,7 +45,7 @@ export const AppLayout = ({ children }) => {
     // { icon: Home, label: "Bookings", path: "/bookings" },
     // { icon: DollarSign, label: "Payments", path: "/payments" },
     // { icon: Bell, label: "Notifications", path: "/notifications" },
-    ...(isAdmin ? [{ icon: Users, label: "Users", path: "/users" }] : []),
+    ...(isAdmin ? [{ icon: User, label: "Users", path: "/users" }] : []),
     // ...(isAdmin ? [{ icon: Settings, label: "Settings", path: "/settings" }] : []),
   ]
 

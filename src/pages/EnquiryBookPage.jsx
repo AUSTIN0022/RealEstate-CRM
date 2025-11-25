@@ -9,8 +9,7 @@ import { Modal } from "../components/ui/Modal"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
 import { FormTextarea } from "../components/ui/FormTextarea"
-// Added Filter icon
-import { Plus, Search, Filter } from "lucide-react" 
+import { Plus, Search, Filter, Loader2 } from "lucide-react" // Added Loader2
 import { enquiryService } from "../services/enquiryService"
 import { projectService } from "../services/projectService"
 import { validateEmail, validatePhone } from "../utils/helpers"
@@ -22,7 +21,6 @@ export default function EnquiryBookPage() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  // New state for the filter modal
   const [showFilterModal, setShowFilterModal] = useState(false) 
   const [searchTerm, setSearchTerm] = useState("")
   const [filters, setFilters] = useState({ project: "", status: "" })
@@ -31,7 +29,12 @@ export default function EnquiryBookPage() {
   const [remarkText, setRemarkText] = useState("")
   const [selectedEnquiry, setSelectedEnquiry] = useState(null)
 
-  // Form state
+  const [propertyOptions, setPropertyOptions] = useState(null)
+  const [optionsLoading, setOptionsLoading] = useState(false)
+  
+  // --- NEW: Submitting state for loader ---
+  const [submitting, setSubmitting] = useState(false)
+
   const [form, setForm] = useState({
     clientName: "",
     mobileNumber: "",
@@ -56,14 +59,12 @@ export default function EnquiryBookPage() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        console.log("Fetching enquiries and projects...")
         const [enquiriesData, projectsData] = await Promise.all([
           enquiryService.getAllEnquiries(),
           projectService.getProjects(),
         ])
         setEnquiries(enquiriesData)
         setProjects(projectsData)
-        console.log("Data fetched successfully")
       } catch (err) {
         console.error("Failed to fetch data:", err)
         error(err.message || "Failed to load data")
@@ -75,7 +76,6 @@ export default function EnquiryBookPage() {
     fetchData()
   }, [])
 
-  // Get filtered enquiries
   const filteredEnquiries = useMemo(() => {
     let result = enquiries
 
@@ -95,6 +95,96 @@ export default function EnquiryBookPage() {
     return result
   }, [enquiries, filters, searchTerm])
 
+  const fetchPropertyOptions = async (projectId) => {
+    if (!projectId) {
+      setPropertyOptions(null)
+      return
+    }
+    try {
+      setOptionsLoading(true)
+      const data = await enquiryService.getPropertyOptions(projectId)
+      setPropertyOptions(data)
+    } catch (err) {
+      console.error("Failed to fetch property options", err)
+      error("Failed to load property details")
+    } finally {
+      setOptionsLoading(false)
+    }
+  }
+
+  const availablePropertyTypes = useMemo(() => {
+    if (!propertyOptions?.propertyTypes) return []
+    return propertyOptions.propertyTypes.map(pt => ({
+      value: pt.propertyType,
+      label: pt.propertyType
+    }))
+  }, [propertyOptions])
+
+  const availableProperties = useMemo(() => {
+    if (!propertyOptions?.propertyTypes || !form.propertyType) return []
+    
+    const selectedTypeData = propertyOptions.propertyTypes.find(
+      pt => pt.propertyType === form.propertyType
+    )
+    
+    if (!selectedTypeData) return []
+
+    return selectedTypeData.properties.map(p => ({
+      value: p.property,
+      label: p.property || "Standard Unit" 
+    }))
+  }, [propertyOptions, form.propertyType])
+
+  const availableAreas = useMemo(() => {
+    if (!propertyOptions?.propertyTypes || !form.propertyType || !form.property === undefined) return []
+
+    const selectedTypeData = propertyOptions.propertyTypes.find(
+      pt => pt.propertyType === form.propertyType
+    )
+    if (!selectedTypeData) return []
+
+    const selectedPropertyData = selectedTypeData.properties.find(
+      p => p.property === form.property
+    )
+    if (!selectedPropertyData) return []
+
+    return selectedPropertyData.areas.map(a => ({
+      value: a.area,
+      label: `${a.area} sq ft (${a.propertiesAvailable} avail)`
+    }))
+  }, [propertyOptions, form.propertyType, form.property])
+
+
+  const handleProjectChange = (e) => {
+    const newProjectId = e.target.value
+    setForm(prev => ({
+      ...prev, 
+      projectId: newProjectId,
+      propertyType: "",
+      property: "",
+      area: ""
+    }))
+    
+    fetchPropertyOptions(newProjectId)
+  }
+
+  const handlePropertyTypeChange = (e) => {
+    setForm(prev => ({
+      ...prev,
+      propertyType: e.target.value,
+      property: "",
+      area: ""
+    }))
+  }
+
+  const handlePropertyChange = (e) => {
+    setForm(prev => ({
+      ...prev,
+      property: e.target.value,
+      area: ""
+    }))
+  }
+
   const handleAddEnquiry = async () => {
     if (!form.clientName || !form.email || !form.mobileNumber) {
       error("Please fill all required client fields")
@@ -111,20 +201,21 @@ export default function EnquiryBookPage() {
       return
     }
 
-    if (!form.projectId || !form.property || !form.area || !form.budget) {
+    if (!form.projectId || !form.propertyType || !form.area || !form.budget) {
       error("Please fill all required property fields")
       return
     }
 
     try {
+      // --- START LOADING ---
+      setSubmitting(true)
+
       if (editingId) {
-        // Update enquiry
         await enquiryService.updateEnquiry(editingId, form)
         const updated = enquiries.map((e) => (e.enquiryId === editingId ? { ...e, ...form } : e))
         setEnquiries(updated)
         success("Enquiry updated successfully")
       } else {
-        // Create new enquiry
         const response = await enquiryService.createEnquiry(form)
         setEnquiries([...enquiries, response])
         success("Enquiry created successfully")
@@ -135,6 +226,9 @@ export default function EnquiryBookPage() {
     } catch (err) {
       console.error("Failed to save enquiry:", err)
       error(err.message || "Failed to save enquiry")
+    } finally {
+      // --- STOP LOADING ---
+      setSubmitting(false)
     }
   }
 
@@ -159,8 +253,10 @@ export default function EnquiryBookPage() {
       status: "ONGOING",
     })
     setEditingId(null)
+    setPropertyOptions(null)
   }
 
+  // ... (Columns definition remains the same)
   const columns = [
     { key: "enquiryId", label: "SN", render: (_, __, idx) => idx + 1 },
     {
@@ -197,7 +293,7 @@ export default function EnquiryBookPage() {
   return (
     <AppLayout>
       <div className="space-y-4 md:space-y-6">
-        {/* Header - MODIFIED */}
+        {/* ... (Header and Filters remain the same) ... */}
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Enquiry Book</h1>
@@ -206,18 +302,14 @@ export default function EnquiryBookPage() {
           <Button
             onClick={() => setShowModal(true)}
             variant="primary"
-            // Responsive classes for the button
             className="flex-shrink-0 p-2 sm:px-4 sm:py-2 rounded-full sm:rounded-xl text-sm md:text-base"
           >
             <Plus size={18} />
-            {/* Text hidden on mobile, visible on sm screens and up */}
             <span className="hidden sm:inline sm:ml-2">Add Enquiry</span>
           </Button>
         </div>
 
-        {/* Filters - MODIFIED */}
         <div className="flex flex-row gap-2 md:gap-4">
-          {/* Search Bar */}
           <div className="flex-1 relative min-w-0">
             <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
             <input
@@ -229,7 +321,6 @@ export default function EnquiryBookPage() {
             />
           </div>
           
-          {/* Desktop Filters - Hidden on mobile */}
           <select
             value={filters.project}
             onChange={(e) => setFilters({ ...filters, project: e.target.value })}
@@ -253,7 +344,6 @@ export default function EnquiryBookPage() {
             <option value="CANCELLED">Cancelled</option>
           </select>
 
-          {/* Mobile Filter Button - Visible only on mobile */}
           <Button
             onClick={() => setShowFilterModal(true)}
             variant="outline"
@@ -263,7 +353,6 @@ export default function EnquiryBookPage() {
           </Button>
         </div>
 
-        {/* Enquiries Table */}
         <Card>
           <div className="overflow-x-auto -mx-4 md:mx-0">
             <div className="inline-block min-w-full px-4 md:px-0">
@@ -273,10 +362,13 @@ export default function EnquiryBookPage() {
                 actions={(row) => [
                   {
                     label: "View Details",
-                    onClick: () => {
+                    onClick: async () => {
                       setSelectedEnquiry(row)
                       setForm(row)
                       setEditingId(row.enquiryId)
+                      if(row.projectId) {
+                        await fetchPropertyOptions(row.projectId)
+                      }
                       setShowModal(true)
                     },
                   },
@@ -286,12 +378,13 @@ export default function EnquiryBookPage() {
           </div>
         </Card>
 
-        {/* Add/Edit Enquiry Modal */}
         <Modal
           isOpen={showModal}
           onClose={() => {
-            setShowModal(false)
-            resetForm()
+            if (!submitting) {
+              setShowModal(false)
+              resetForm()
+            }
           }}
           title={editingId ? "Edit Enquiry" : "Add New Enquiry"}
           type={editingId ? "info" : "default"}
@@ -303,17 +396,12 @@ export default function EnquiryBookPage() {
           showSectionDividers={false}
           leftColumn={
             <div className="space-y-6">
-              {/* Client Section */}
+              {/* ... (Client Information Section remains same) ... */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-gray-900">Client Information</h3>
@@ -378,12 +466,7 @@ export default function EnquiryBookPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                     <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-gray-900">Property Details</h3>
@@ -393,35 +476,40 @@ export default function EnquiryBookPage() {
                   <FormSelect
                     label="Project"
                     value={form.projectId}
-                    onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+                    onChange={handleProjectChange}
                     options={projects.map((p) => ({ value: p.projectId, label: p.projectName }))}
                     required
                   />
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormSelect
                       label="Property Type"
                       value={form.propertyType}
-                      onChange={(e) => setForm({ ...form, propertyType: e.target.value })}
-                      options={[
-                        { value: "Commercial", label: "Commercial" },
-                        { value: "Residential", label: "Residential" },
-                      ]}
+                      onChange={handlePropertyTypeChange}
+                      options={availablePropertyTypes}
                       required
+                      disabled={!form.projectId || optionsLoading}
+                      placeholder={optionsLoading ? "Loading..." : "Select Type"}
                     />
-                    <FormInput
+                    
+                    <FormSelect
                       label="Property"
                       value={form.property}
-                      onChange={(e) => setForm({ ...form, property: e.target.value })}
-                      placeholder="e.g., 3 BHK"
+                      onChange={handlePropertyChange}
+                      options={availableProperties}
+                      placeholder="Select Property"
                       required
+                      disabled={!form.propertyType}
                     />
                   </div>
-                  <FormInput
+                  
+                  <FormSelect
                     label="Area (sq ft)"
-                    type="number"
                     value={form.area}
                     onChange={(e) => setForm({ ...form, area: e.target.value })}
+                    options={availableAreas}
                     required
+                    disabled={!form.property}
                   />
                 </div>
               </div>
@@ -429,17 +517,12 @@ export default function EnquiryBookPage() {
           }
           rightColumn={
             <div className="space-y-6">
-              {/* Enquiry Details */}
+              {/* ... (Enquiry Details Section remains same) ... */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
                     <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-gray-900">Enquiry Details</h3>
@@ -488,6 +571,7 @@ export default function EnquiryBookPage() {
               </div>
             </div>
           }
+          // --- MODIFIED FOOTER WITH LOADER ---
           footer={
             <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end">
               <button
@@ -495,23 +579,32 @@ export default function EnquiryBookPage() {
                   setShowModal(false)
                   resetForm()
                 }}
-                className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors w-full sm:w-auto"
+                disabled={submitting}
+                className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddEnquiry}
-                className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm w-full sm:w-auto"
+                disabled={submitting}
+                className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {editingId ? "Update" : "Create"} Enquiry
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                   {editingId ? "Update" : "Create"} Enquiry
+                  </>
+                )}
               </button>
             </div>
           }
         />
 
-      
-
-        {/* NEW - Filter Modal (for Mobile) */}
+        {/* ... (Filter Modal remains the same) ... */}
         <Modal
           isOpen={showFilterModal}
           onClose={() => setShowFilterModal(false)}
@@ -523,7 +616,6 @@ export default function EnquiryBookPage() {
               value={filters.project}
               onChange={(e) => setFilters({ ...filters, project: e.target.value })}
               options={[
-                // Add "All Projects" option
                 { value: "", label: "All Projects" }, 
                 ...projects.map((p) => ({ value: p.projectId, label: p.projectName })),
               ]}
@@ -533,7 +625,6 @@ export default function EnquiryBookPage() {
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               options={[
-                // Add "All Status" option
                 { value: "", label: "All Status" },
                 { value: "ONGOING", label: "Ongoing" },
                 { value: "COMPLETED", label: "Completed" },
@@ -553,7 +644,7 @@ export default function EnquiryBookPage() {
               Clear Filters
             </Button>
             <Button
-              onClick={() => setShowFilterModal(false)} // Just close, state is already set
+              onClick={() => setShowFilterModal(false)}
               variant="primary"
               className="w-full sm:w-auto"
             >

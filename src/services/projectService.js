@@ -23,26 +23,108 @@ export const projectService = {
     }
   },
 
-  async createProject(projectData) {
+async createProject(projectData) {
     try {
       const formData = new FormData()
 
-      // Basic Info
+      // --- 1. Basic Info ---
       formData.append("projectName", projectData.projectName)
       formData.append("projectAddress", projectData.projectAddress)
       formData.append("startDate", projectData.startDate)
       formData.append("completionDate", projectData.completionDate)
       formData.append("mahareraNo", projectData.mahareraNo || "")
       formData.append("status", projectData.status || "UPCOMING")
-      formData.append("progress", projectData.progress || 0)
       formData.append("path", projectData.path || "/")
+      
+      // Note: curl doesn't send "progress", but your object does. 
+      // Keeping it just in case, but converting to string.
+      formData.append("progress", (projectData.progress || 0).toString())
 
-      // Existing formData logic for initial creation...
-      // (Preserving your original logic here if needed, but typically creation is simple)
+      // --- 2. Wings & Floors (Nested) ---
+      if (projectData.wings && projectData.wings.length > 0) {
+        projectData.wings.forEach((wing, wIndex) => {
+          formData.append(`wings[${wIndex}].wingName`, wing.wingName)
+          formData.append(`wings[${wIndex}].noOfFloors`, wing.noOfFloors)
+          formData.append(`wings[${wIndex}].noOfProperties`, wing.noOfProperties)
+
+          if (wing.floors && wing.floors.length > 0) {
+            wing.floors.forEach((floor, fIndex) => {
+              formData.append(`wings[${wIndex}].floors[${fIndex}].floorNo`, floor.floorNo)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].floorName`, floor.floorName)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].propertyType`, floor.propertyType)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].property`, floor.property)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].area`, floor.area)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].quantity`, floor.quantity)
+            })
+          }
+        })
+      }
+
+      // --- 3. Project Approved Banks ---
+      if (projectData.projectApprovedBanksInfo && projectData.projectApprovedBanksInfo.length > 0) {
+        projectData.projectApprovedBanksInfo.forEach((bank, index) => {
+          formData.append(`projectApprovedBanksInfo[${index}].bankName`, bank.bankName)
+          formData.append(`projectApprovedBanksInfo[${index}].branchName`, bank.branchName)
+          formData.append(`projectApprovedBanksInfo[${index}].contactPerson`, bank.contactPerson)
+          formData.append(`projectApprovedBanksInfo[${index}].contactNumber`, bank.contactNumber)
+        })
+      }
+
+      // --- 4. Disbursement Banks ---
+      if (projectData.disbursementBanksDetail && projectData.disbursementBanksDetail.length > 0) {
+        projectData.disbursementBanksDetail.forEach((bank, index) => {
+          formData.append(`disbursementBanksDetail[${index}].bankName`, bank.bankName)
+          formData.append(`disbursementBanksDetail[${index}].branchName`, bank.branchName)
+          formData.append(`disbursementBanksDetail[${index}].accountName`, bank.accountName)
+          formData.append(`disbursementBanksDetail[${index}].ifsc`, bank.ifsc)
+          formData.append(`disbursementBanksDetail[${index}].accountType`, bank.accountType)
+          formData.append(`disbursementBanksDetail[${index}].accountNo`, bank.accountNo)
+          
+          // Handle File Upload for Disbursement Letter Head
+          if (bank.disbursementLetterHead) {
+            formData.append(`disbursementBanksDetail[${index}].disbursementLetterHead`, bank.disbursementLetterHead)
+          }
+        })
+      }
+
+      // --- 5. Amenities ---
+      if (projectData.amenities && projectData.amenities.length > 0) {
+        projectData.amenities.forEach((amenity, index) => {
+          formData.append(`amenities[${index}].amenityName`, amenity.amenityName)
+        })
+      }
+
+      // --- 6. Documents (Files) ---
+      if (projectData.documents && projectData.documents.length > 0) {
+        projectData.documents.forEach((doc, index) => {
+          formData.append(`documents[${index}].documentType`, doc.documentType)
+          formData.append(`documents[${index}].documentTitle`, doc.documentTitle)
+          
+          // The actual file object
+          if (doc.document) {
+            formData.append(`documents[${index}].document`, doc.document)
+          }
+        })
+      }
+
+      // --- 7. Disbursements ---
+      if (projectData.disbursements && projectData.disbursements.length > 0) {
+        projectData.disbursements.forEach((d, index) => {
+          formData.append(`disbursements[${index}].disbursementTitle`, d.disbursementTitle)
+          formData.append(`disbursements[${index}].description`, d.description)
+          formData.append(`disbursements[${index}].percentage`, d.percentage)
+        })
+      }
+
+      // --- 8. Main Letterhead File ---
+      if (projectData.letterHeadFile) {
+        formData.append("letterHeadFile", projectData.letterHeadFile)
+      }
 
       const response = await apiClient.request("/projects", {
         method: "POST",
         body: formData,
+        // Don't set Content-Type header here; fetch sets it automatically for FormData with the correct boundary
       })
       return response
     } catch (error) {
@@ -50,7 +132,6 @@ export const projectService = {
       throw error
     }
   },
-
   async updateProject(projectId, projectData) {
     try {
       // API Guide: PUT {{base_url}}/{{project_id}}
@@ -96,7 +177,6 @@ export const projectService = {
   async createWing(projectId, wingData) {
     try {
       // API Guide: POST {{base_url}}/{{project_id}} (Wings endpoint inferred as /wings based on context)
-      // Correction based on API Guide: curl ... /api/wings/5004...
       const response = await apiClient.request(`/wings/${projectId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
