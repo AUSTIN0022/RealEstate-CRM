@@ -4,26 +4,14 @@ export const projectService = {
   // --- Basic Project Operations ---
 
   async getProjects() {
-    try {
-      const response = await apiClient.request("/projects/basicinfolist")
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to fetch projects:", error)
-      throw error
-    }
+    return await apiClient.request("/projects/basicinfolist")
   },
 
   async getProjectById(projectId) {
-    try {
-      const response = await apiClient.request(`/projects/${projectId}`)
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to fetch project:", error)
-      throw error
-    }
+    return await apiClient.request(`/projects/${projectId}`)
   },
 
-async createProject(projectData) {
+    async createProject(projectData) {
     try {
       const formData = new FormData()
 
@@ -132,180 +120,195 @@ async createProject(projectData) {
       throw error
     }
   },
+
   async updateProject(projectId, projectData) {
-    try {
-      // API Guide: PUT {{base_url}}/{{project_id}}
-      const response = await apiClient.request(`/projects/${projectId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(projectData),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to update project:", error)
-      throw error
-    }
+    return await apiClient.request(`/projects/${projectId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(projectData),
+    })
   },
 
   async deleteProject(projectId) {
-    try {
-      // API Guide: DELETE {{base_url}}/{{project_id}}
-      await apiClient.request(`/projects/${projectId}`, {
-        method: "DELETE",
-      })
-      return true
-    } catch (error) {
-      console.error("[ProjectService] Failed to delete project:", error)
-      throw error
-    }
+    await apiClient.request(`/projects/${projectId}`, { method: "DELETE" })
+    return true
   },
 
-  // --- Enquiries ---
-
-  async getProjectEnquiries(projectId) {
-    try {
-      const response = await apiClient.request(`/enquiries/project/${projectId}`)
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to fetch enquiries:", error)
-      throw error
-    }
-  },
-
-  // --- Wings & Floors ---
+  // --- Wings ---
 
   async createWing(projectId, wingData) {
-    try {
-      // API Guide: POST {{base_url}}/{{project_id}} (Wings endpoint inferred as /wings based on context)
-      const response = await apiClient.request(`/wings/${projectId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(wingData),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to create wing:", error)
-      throw error
-    }
+    return await apiClient.request(`/wings/${projectId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(wingData),
+    })
   },
 
-  async updateWing(wingId, wingData) {
-    try {
-      // API Guide: PUT {{base_url}}/{{wing_id}}
-      const response = await apiClient.request(`/wings/${wingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(wingData),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to update wing:", error)
-      throw error
-    }
-  },
+  // --- Bank Info (Updated Endpoints) ---
 
-  // --- Bank Info ---
+  async getBanksByProject(projectId) {
+    // GET {{base_url}}/bankProjectInfo/project/{{project_id}}
+    return await apiClient.request(`/bankProjectInfo/project/${projectId}`)
+  },
 
   async createBankInfo(projectId, bankData) {
-    try {
-      // API Guide: POST {{base_url}}/{{project_id}} (for bank info)
-      const response = await apiClient.request(`/bankProjectInfo/${projectId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bankData),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to create bank info:", error)
-      throw error
-    }
+    // POST {{base_url}}/bankProjectInfo/{{project_id}}
+    return await apiClient.request(`/bankProjectInfo/${projectId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bankData),
+    })
   },
 
   async updateBankInfo(bankInfoId, bankData) {
-    try {
-      // API Guide: PUT {{base_url}}/{{bank_project_info_id}}
-      const response = await apiClient.request(`/bankProjectInfo/${bankInfoId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bankData),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to update bank info:", error)
-      throw error
-    }
+    // PUT {{base_url}}/bankProjectInfo/{{bank_project_info_id}}
+    return await apiClient.request(`/bankProjectInfo/${bankInfoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bankData),
+    })
   },
 
-  // --- Amenities ---
+  async deleteBankInfo(bankInfoId) {
+    // DELETE {{base_url}}/bankProjectInfo/{{bank_project_info_id}}
+    return await apiClient.request(`/bankProjectInfo/${bankInfoId}`, {
+      method: "DELETE",
+    })
+  },
+
+  // --- Amenities (Updated Endpoints) ---
+
+  async getAmenitiesByProject(projectId) {
+    // GET {{base_url}}/amenities/project/{{project_id}}
+    return await apiClient.request(`/amenities/project/${projectId}`)
+  },
 
   async createAmenity(projectId, amenityData) {
-    try {
-      // API Guide: POST {{base_url}}/{{project_id}} (for amenities)
-      const response = await apiClient.request(`/amenities/${projectId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(amenityData),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to create amenity:", error)
-      throw error
-    }
+    // POST {{base_url}}/amenities/{{project_id}}
+    return await apiClient.request(`/amenities/${projectId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(amenityData),
+    })
   },
 
   async updateAmenity(amenityId, amenityData) {
-    try {
-      // API Guide: PUT {{base_url}}/{{amenity_id}}
-      const response = await apiClient.request(`/amenities/${amenityId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(amenityData),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to update amenity:", error)
-      throw error
-    }
+    // PUT {{base_url}}/amenities/{{amenity_id}}
+    return await apiClient.request(`/amenities/${amenityId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(amenityData),
+    })
   },
 
   async deleteAmenity(amenityId) {
+    // DELETE {{base_url}}/amenities/{{amenity_id}}
+    return await apiClient.request(`/amenities/${amenityId}`, {
+      method: "DELETE",
+    })
+  },
+
+  // --- Documents (New) ---
+
+  async getDocumentsByProject(projectId) {
+    // GET {{base_url}}/documents/project/{{project_id}}
+    return await apiClient.request(`/documents/project/${projectId}`)
+  },
+
+ async createDocument(projectId, docData) {
+  const formData = new FormData()
+  formData.append("documentType", docData.documentType)
+  formData.append("documentTitle", docData.documentTitle)
+
+  if (docData.file) {
+    formData.append("document", docData.file)
+  }
+
+  const token = apiClient.getAuthToken()
+
+  const response = await fetch(`https://realestate.ysminfosolution.com/api/documents/${projectId}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`
+    },
+    body: formData
+  })
+
+  if (!response.ok) {
+    const t = await response.text()
+    throw new Error(t || "Failed to upload document")
+  }
+
+  // Upload usually returns null/empty — return success manually
+  return true
+},
+
+  async deleteDocument(docId) {
+    // DELETE {{base_url}}/documents/{{doc_id}}
+    return await apiClient.request(`/documents/${docId}`, {
+      method: "DELETE",
+    })
+  },
+
+  async downloadDocument(downloadPath) {
+    // The API guide implies a full relative path or ID usage. 
+    // Assuming the API returns a path like "download/uuid/project/..."
+    // We need to request this with responseType blob to handle file download
     try {
-      // API Guide: DELETE {{base_url}}/{{amenity_id}}
-      await apiClient.request(`/amenities/${amenityId}`, {
-        method: "DELETE",
-      })
-      return true
+        // Ensure path starts with /
+        const cleanPath = downloadPath.startsWith('/') ? downloadPath : `/${downloadPath}`;
+        
+        // Note: You might need to adjust based on how apiClient handles blobs.
+        // If apiClient parses JSON by default, you might need a raw fetch here or a flag in apiClient.
+        // Assuming standard fetch for blob:
+        const token = localStorage.getItem("token") // Or however you store auth
+        const baseUrl = "https://realestate.ysminfosolution.com/api" // Adjust to your env config
+        
+        const response = await fetch(`${baseUrl}${cleanPath}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+
+        if (!response.ok) throw new Error("Download failed")
+
+        const blob = await response.blob()
+        
+        // Create a temporary link to trigger download
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        // Attempt to extract filename from header or path
+        const fileName = cleanPath.split('/').pop() || "document"
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
     } catch (error) {
-      console.error("[ProjectService] Failed to delete amenity:", error)
-      throw error
+        console.error("Download error:", error)
+        throw error
     }
   },
 
-  // --- Disbursements ---
+  // --- Enquiries & Disbursements (Existing) ---
+
+  async getProjectEnquiries(projectId) {
+    return await apiClient.request(`/enquiries/project/${projectId}`)
+  },
 
   async getDisbursements(projectId) {
-    try {
-      // API Guide: GET {{base_url}}/{{project_id}}
-      const response = await apiClient.request(`/disbursements/${projectId}`)
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to fetch disbursements:", error)
-      throw error
-    }
+    return await apiClient.request(`/disbursements/${projectId}`)
   },
 
   async updateDisbursements(projectId, disbursementList) {
-    try {
-      // API Guide: PUT {{base_url}}/{{project_id}}
-      const response = await apiClient.request(`/disbursements/${projectId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(disbursementList),
-      })
-      return response
-    } catch (error) {
-      console.error("[ProjectService] Failed to update disbursements:", error)
-      throw error
-    }
+    return await apiClient.request(`/disbursements/${projectId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(disbursementList),
+    })
   },
+
+  
+
 }

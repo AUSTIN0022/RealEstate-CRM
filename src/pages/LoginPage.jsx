@@ -228,7 +228,7 @@ export default function LoginPage() {
           
 
           {/* Footer */}
-          <div className="mt-6 text-center">
+          {/* <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
               Don't have an account?{" "}
               <button
@@ -240,7 +240,7 @@ export default function LoginPage() {
                 Sign up
               </button>
             </p>
-          </div>
+          </div> */}
         </div>
 
         {/* Footer Text */}
