@@ -11,7 +11,7 @@ export const projectService = {
     return await apiClient.request(`/projects/${projectId}`)
   },
 
-    async createProject(projectData) {
+  async createProject(projectData) {
     try {
       const formData = new FormData()
 
@@ -23,9 +23,6 @@ export const projectService = {
       formData.append("mahareraNo", projectData.mahareraNo || "")
       formData.append("status", projectData.status || "UPCOMING")
       formData.append("path", projectData.path || "/")
-      
-      // Note: curl doesn't send "progress", but your object does. 
-      // Keeping it just in case, but converting to string.
       formData.append("progress", (projectData.progress || 0).toString())
 
       // --- 2. Wings & Floors (Nested) ---
@@ -67,8 +64,7 @@ export const projectService = {
           formData.append(`disbursementBanksDetail[${index}].ifsc`, bank.ifsc)
           formData.append(`disbursementBanksDetail[${index}].accountType`, bank.accountType)
           formData.append(`disbursementBanksDetail[${index}].accountNo`, bank.accountNo)
-          
-          // Handle File Upload for Disbursement Letter Head
+
           if (bank.disbursementLetterHead) {
             formData.append(`disbursementBanksDetail[${index}].disbursementLetterHead`, bank.disbursementLetterHead)
           }
@@ -87,8 +83,6 @@ export const projectService = {
         projectData.documents.forEach((doc, index) => {
           formData.append(`documents[${index}].documentType`, doc.documentType)
           formData.append(`documents[${index}].documentTitle`, doc.documentTitle)
-          
-          // The actual file object
           if (doc.document) {
             formData.append(`documents[${index}].document`, doc.document)
           }
@@ -112,7 +106,6 @@ export const projectService = {
       const response = await apiClient.request("/projects", {
         method: "POST",
         body: formData,
-        // Don't set Content-Type header here; fetch sets it automatically for FormData with the correct boundary
       })
       return response
     } catch (error) {
@@ -144,15 +137,27 @@ export const projectService = {
     })
   },
 
-  // --- Bank Info (Updated Endpoints) ---
+  async updateWing(wingId, wingData) {
+    return await apiClient.request(`/wings/${wingId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(wingData),
+    })
+  },
+
+  async deleteWing(wingId) {
+    return await apiClient.request(`/wings/${wingId}`, {
+      method: "DELETE",
+    })
+  },
+
+  // --- Bank Info ---
 
   async getBanksByProject(projectId) {
-    // GET {{base_url}}/bankProjectInfo/project/{{project_id}}
     return await apiClient.request(`/bankProjectInfo/project/${projectId}`)
   },
 
   async createBankInfo(projectId, bankData) {
-    // POST {{base_url}}/bankProjectInfo/{{project_id}}
     return await apiClient.request(`/bankProjectInfo/${projectId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -161,7 +166,6 @@ export const projectService = {
   },
 
   async updateBankInfo(bankInfoId, bankData) {
-    // PUT {{base_url}}/bankProjectInfo/{{bank_project_info_id}}
     return await apiClient.request(`/bankProjectInfo/${bankInfoId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -170,21 +174,18 @@ export const projectService = {
   },
 
   async deleteBankInfo(bankInfoId) {
-    // DELETE {{base_url}}/bankProjectInfo/{{bank_project_info_id}}
     return await apiClient.request(`/bankProjectInfo/${bankInfoId}`, {
       method: "DELETE",
     })
   },
 
-  // --- Amenities (Updated Endpoints) ---
+  // --- Amenities ---
 
   async getAmenitiesByProject(projectId) {
-    // GET {{base_url}}/amenities/project/{{project_id}}
     return await apiClient.request(`/amenities/project/${projectId}`)
   },
 
   async createAmenity(projectId, amenityData) {
-    // POST {{base_url}}/amenities/{{project_id}}
     return await apiClient.request(`/amenities/${projectId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -193,7 +194,6 @@ export const projectService = {
   },
 
   async updateAmenity(amenityId, amenityData) {
-    // PUT {{base_url}}/amenities/{{amenity_id}}
     return await apiClient.request(`/amenities/${amenityId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -202,96 +202,80 @@ export const projectService = {
   },
 
   async deleteAmenity(amenityId) {
-    // DELETE {{base_url}}/amenities/{{amenity_id}}
     return await apiClient.request(`/amenities/${amenityId}`, {
       method: "DELETE",
     })
   },
 
-  // --- Documents (New) ---
+  // --- Documents ---
 
   async getDocumentsByProject(projectId) {
-    // GET {{base_url}}/documents/project/{{project_id}}
     return await apiClient.request(`/documents/project/${projectId}`)
   },
 
- async createDocument(projectId, docData) {
-  const formData = new FormData()
-  formData.append("documentType", docData.documentType)
-  formData.append("documentTitle", docData.documentTitle)
+  async createDocument(projectId, docData) {
+    const formData = new FormData()
+    formData.append("documentType", docData.documentType)
+    formData.append("documentTitle", docData.documentTitle)
 
-  if (docData.file) {
-    formData.append("document", docData.file)
-  }
+    if (docData.file) {
+      formData.append("document", docData.file)
+    }
 
-  const token = apiClient.getAuthToken()
+    const token = apiClient.getAuthToken()
 
-  const response = await fetch(`https://realestate.ysminfosolution.com/api/documents/${projectId}`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`
-    },
-    body: formData
-  })
+    const response = await fetch(`${import.meta.env.VITE_API_URL}${projectId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
 
-  if (!response.ok) {
-    const t = await response.text()
-    throw new Error(t || "Failed to upload document")
-  }
-
-  // Upload usually returns null/empty — return success manually
-  return true
-},
+    if (!response.ok) {
+      const t = await response.text()
+      throw new Error(t || "Failed to upload document")
+    }
+    return true
+  },
 
   async deleteDocument(docId) {
-    // DELETE {{base_url}}/documents/{{doc_id}}
     return await apiClient.request(`/documents/${docId}`, {
       method: "DELETE",
     })
   },
 
   async downloadDocument(downloadPath) {
-    // The API guide implies a full relative path or ID usage. 
-    // Assuming the API returns a path like "download/uuid/project/..."
-    // We need to request this with responseType blob to handle file download
     try {
-        // Ensure path starts with /
-        const cleanPath = downloadPath.startsWith('/') ? downloadPath : `/${downloadPath}`;
-        
-        // Note: You might need to adjust based on how apiClient handles blobs.
-        // If apiClient parses JSON by default, you might need a raw fetch here or a flag in apiClient.
-        // Assuming standard fetch for blob:
-        const token = localStorage.getItem("token") // Or however you store auth
-        const baseUrl = "https://realestate.ysminfosolution.com/api" // Adjust to your env config
-        
-        const response = await fetch(`${baseUrl}${cleanPath}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
+      const cleanPath = downloadPath.startsWith("/") ? downloadPath : `/${downloadPath}`
+      const token = localStorage.getItem("token")
+      const baseUrl = import.meta.env.VITE_API_URL
 
-        if (!response.ok) throw new Error("Download failed")
+      const response = await fetch(`${baseUrl}${cleanPath}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
-        const blob = await response.blob()
-        
-        // Create a temporary link to trigger download
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        // Attempt to extract filename from header or path
-        const fileName = cleanPath.split('/').pop() || "document"
-        a.download = fileName
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        window.URL.revokeObjectURL(url)
+      if (!response.ok) throw new Error("Download failed")
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const fileName = cleanPath.split("/").pop() || "document"
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
     } catch (error) {
-        console.error("Download error:", error)
-        throw error
+      console.error("Download error:", error)
+      throw error
     }
   },
 
-  // --- Enquiries & Disbursements (Existing) ---
+  // --- Enquiries & Disbursements ---
 
   async getProjectEnquiries(projectId) {
     return await apiClient.request(`/enquiries/project/${projectId}`)
@@ -308,7 +292,4 @@ export const projectService = {
       body: JSON.stringify(disbursementList),
     })
   },
-
-  
-
 }

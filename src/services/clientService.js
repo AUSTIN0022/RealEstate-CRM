@@ -16,7 +16,7 @@ export const clientService = {
   // Get client by ID
   async getClientById(clientId) {
     try {
-      const response = await apiClient.request(`/clients/${clientId}`)
+      const response = await apiClient.request(`/clients/${clientId}/details`)
       console.log("Client fetched:", clientId)
       return response
     } catch (error) {

@@ -33,6 +33,28 @@ export const enquiryService = {
       throw error
     }
   },
+  // Get By Id
+  async getEnquiry(enquiryId) {
+    try {
+      const response = await apiClient.request(`/enquiries/${enquiryId}`)
+      console.log("enquiriy fetched:", projectId)
+      return response
+    } catch (error) {
+      console.error("Failed to fetch enquiriy:", error)
+      throw error
+    }
+  },
+
+  async getClientEnquiries(clientId) {
+    try {
+      const response = await apiClient.request(`/enquiries/basicinfolist/client/${clientId}`)
+      console.log("Client enquiries fetched:", clientId)
+      return response
+    } catch (error) {
+      console.error("Failed to fetch Client enquiries:", error)
+      throw error
+    }
+  },
 
   // --- NEW METHOD ADDED HERE ---
   async getPropertyOptions(projectId) {
@@ -46,6 +68,21 @@ export const enquiryService = {
     }
   },
   // -----------------------------
+
+async createClientEnquiry(clientId, enquiryData) {
+    try {
+      const response = await apiClient.request(`/enquiries/client/${clientId}`, {
+        method: "POST",
+        body: JSON.stringify(enquiryData),
+      })
+
+      console.log("Enquiry created successfully")
+      return response
+    } catch (error) {
+      console.error("Failed to create enquiry:", error)
+      throw error
+    }
+  },
 
   async createEnquiry(enquiryData) {
     try {

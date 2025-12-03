@@ -1,6 +1,6 @@
-"use client"
-
-import { useState, useMemo } from "react"
+// Table.jsx
+import { useState, useMemo, useRef, useEffect } from "react"
+import { createPortal } from "react-dom" //
 import { ChevronLeft, ChevronRight, MoreVertical } from "lucide-react"
 
 export const Table = ({ columns, data, onRowClick, actions, itemsPerPage = 10 }) => {
@@ -103,30 +103,87 @@ export const Table = ({ columns, data, onRowClick, actions, itemsPerPage = 10 })
   )
 }
 
+// Updated ActionMenu using Portal to escape overflow containers
 const ActionMenu = ({ items }) => {
   const [open, setOpen] = useState(false)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const buttonRef = useRef(null)
+
+  // Close menu on scroll to prevent it from floating detached
+  useEffect(() => {
+    const handleScroll = () => {
+        if(open) setOpen(false);
+    }
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [open]);
+
+  const handleToggle = (e) => {
+    e.stopPropagation();
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const menuHeight = items.length * 40 + 16 // Approximate height
+      
+      // Decide position: Open upwards if not enough space below
+      const showUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
+      
+      // Calculate coordinates
+      // The menu is w-40 (160px). We align the right edge of menu with right edge of button
+      setPosition({
+        top: showUpwards ? rect.top - menuHeight : rect.bottom + 5,
+        left: rect.right - 160 // Align right edges (button right - menu width)
+      })
+    }
+    setOpen(!open)
+  }
 
   return (
-    <div className="relative">
-      <button onClick={() => setOpen(!open)} className="p-1 hover:bg-gray-200 rounded-xl">
+    <>
+      <button 
+        ref={buttonRef}
+        onClick={handleToggle} 
+        className="p-1 hover:bg-gray-200 rounded-xl transition-colors relative"
+      >
         <MoreVertical size={18} />
       </button>
-      {open && (
-        <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-10">
-          {items.map((item, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                item.onClick()
-                setOpen(false)
-              }}
-              className="w-full text-left px-4 py-1 hover:bg-gray-100 text-xs text-gray-700 first:rounded-t-lg last:rounded-b-lg"
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+
+      {open && createPortal(
+        <>
+          {/* Backdrop to handle click outside */}
+          <div 
+            className="fixed inset-0 z-[9998] bg-transparent" 
+            onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+            }}
+          />
+          
+          {/* The Menu Content */}
+          <div 
+            className="fixed z-[9999] w-40 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+            style={{ 
+                top: `${position.top}px`, 
+                left: `${position.left}px`,
+            }}
+          >
+            {items.map((item, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  item.onClick()
+                  setOpen(false)
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 transition-colors"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body
       )}
-    </div>
+    </>
   )
 }

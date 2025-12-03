@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://realestate.ysminfosolution.com/api"
+const API_BASE_URL =  import.meta.env.VITE_API_URL // "https://realestate.ysminfosolution.com/api" //
 
 export const apiClient = {
   

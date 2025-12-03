@@ -2,9 +2,8 @@ import { useState, useMemo, useCallback, useEffect } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToast } from "../components/ui/Toast"
 import { followUpService } from "../services/followUpService"
-import { enquiryService } from "../services/enquiryService"
 import { AppLayout } from "../components/layout/AppLayout"
-import { StatCard, CompactStatsRow } from "../components/ui/Card" // Updated import
+import { StatCard, CompactStatsRow } from "../components/ui/Card"
 import { Card } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
 import { Modal, TwoColumnModal, ModalSection } from "../components/ui/Modal"
@@ -12,7 +11,7 @@ import { FormInput } from "../components/ui/FormInput"
 import { FormTextarea } from "../components/ui/FormTextarea"
 import { Timeline } from "../components/ui/Timeline"
 import { FormSelect } from "../components/ui/FormSelect"
-import { CheckCircle2, Circle, Calendar, User, FileText } from "lucide-react"
+import { CheckCircle2, Circle, Calendar, Phone, User, FileText, Plus } from "lucide-react"
 import { formatDateTime } from "../utils/helpers"
 import { SkeletonLoader } from "../components/ui/SkeletonLoader"
 import { FOLLOWUP_EVENT_TAGS } from "../utils/constants"
@@ -88,7 +87,7 @@ const FollowUpTable = ({ followUps, viewMode, onComplete, onViewTimeline }) => {
   if (followUps.length === 0) {
     return (
       <tr>
-        <td colSpan="5" className="px-4 md:px-6 py-8 text-center text-gray-500 text-sm md:text-base">
+        <td colSpan="7" className="px-4 md:px-6 py-8 text-center text-gray-500 text-sm md:text-base">
           {viewMode === VIEW_MODES.TODAY ? "No tasks for today" : "No follow-ups"}
         </td>
       </tr>
@@ -121,8 +120,9 @@ const FollowUpTable = ({ followUps, viewMode, onComplete, onViewTimeline }) => {
             <CheckCircle2 size={20} className={isComplete ? "text-green-600" : "text-gray-300"} />
           )}
         </td>
-        <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{followUp.clientName || "N/A"}</td>
+        <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{followUp.clientName}</td>
         <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{formatDate(followUp.followUpNextDate)}</td>
+        <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{followUp.mobileNumber}</td>
         <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{followUp.agentName || "Unassigned"}</td>
         <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">
           <p className="truncate max-w-xs">{followUp.description || "-"}</p>
@@ -146,16 +146,13 @@ export default function FollowUpPage() {
   const { success, error } = useToast()
 
   const [followUps, setFollowUps] = useState([])
-  const [enquiries, setEnquiries] = useState([])
   const [loading, setLoading] = useState(true)
 
   // State
-  const [showAddModal, setShowAddModal] = useState(false)
   const [showTimelineModal, setShowTimelineModal] = useState(false)
   const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [selectedFollowUp, setSelectedFollowUp] = useState(null)
   const [viewMode, setViewMode] = useState(VIEW_MODES.TODAY)
-  const [addForm, setAddForm] = useState(INITIAL_FORM_STATE)
   const [nodeForm, setNodeForm] = useState(INITIAL_NODE_FORM_STATE)
   const [completeForm, setCompleteForm] = useState({
     remark: "",
@@ -170,12 +167,8 @@ export default function FollowUpPage() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [followUpsData, enquiriesData] = await Promise.all([
-          followUpService.getFollowUpTasks(),
-          enquiryService.getAllEnquiries(),
-        ])
+        const [followUpsData] = await Promise.all([followUpService.getFollowUpTasks()])
         setFollowUps(followUpsData || [])
-        setEnquiries(enquiriesData || [])
       } catch (err) {
         console.error("[v0] Failed to fetch follow-up data:", err)
         error("Failed to load follow-ups")
@@ -234,55 +227,22 @@ export default function FollowUpPage() {
       .sort((a, b) => new Date(a.followUpNextDate) - new Date(b.followUpNextDate))
   }, [enrichedFollowUps, viewMode, today])
 
-  // Get follow-up nodes
-  const getFollowUpNodes = useCallback(
-    (followUpId) => {
-      const followUp = followUps.find((fu) => fu.followUpId === followUpId)
-      return followUp?.followUpNodes || []
-    },
-    [followUps],
-  )
-
-  // Timeline events
+  // Timeline events - Updated with groupDate for the Timeline component
   const timelineEvents = useMemo(() => {
     if (!selectedFollowUp || !selectedFollowUp.followUpNodes) return []
 
     return selectedFollowUp.followUpNodes.map((node) => ({
       title: node.tag || "Note Added",
       timestamp: formatDateTime(node.followUpDateTime),
+      groupDate: new Date(node.followUpDateTime).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }), // e.g., "30 Nov 2025"
       description: node.body,
       agent: node.agentName,
     }))
   }, [selectedFollowUp])
-
-  // Handlers
-  const handleAddFollowUp = useCallback(async () => {
-    if (!addForm.enquiryId || !addForm.followUpDate) {
-      error("Please fill all required fields")
-      return
-    }
-
-    try {
-      const nodeData = {
-        followUpNextDate: addForm.followUpDate,
-        body: addForm.description,
-        tag: "Follow-Up Created",
-      }
-
-      // This would need an API endpoint to create follow-up
-      // For now, we'll show success
-      success("Follow-up created successfully")
-      setAddForm(INITIAL_FORM_STATE)
-      setShowAddModal(false)
-
-      // Refresh data
-      const followUpsData = await followUpService.getFollowUpTasks()
-      setFollowUps(followUpsData || [])
-    } catch (err) {
-      console.error("[v0] Failed to create follow-up:", err)
-      error("Failed to create follow-up")
-    }
-  }, [addForm, error, success])
 
   const handleAddNote = useCallback(async () => {
     if (!nodeForm.body.trim()) {
@@ -365,7 +325,7 @@ export default function FollowUpPage() {
           setSelectedFollowUp(fullFollowUp)
           setShowTimelineModal(true)
         } catch (err) {
-          console.error("[v0] Failed to fetch follow-up details:", err)
+          console.error("Failed to fetch follow-up details:", err)
           error("Failed to load follow-up details")
         }
       }
@@ -375,27 +335,38 @@ export default function FollowUpPage() {
     [error],
   )
 
-  // Prepare stats array for CompactStatsRow
-  const statsArray = useMemo(() => [
-    {
-      label: 'Overdue',
-      value: stats.overdue,
-      trend: stats.overdue > 0 ? 'up' : 'down',
-      trendDirection: stats.overdue > 0 ? 'negative' : 'positive'
-    },
-    {
-      label: "Today's Pending",
-      value: stats.todayPending,
-      trend: stats.todayPending > 0 ? 'up' : 'down',
-      trendDirection: stats.todayPending > 0 ? 'neutral' : 'positive'
-    },
-    {
-      label: 'Completed Today',
-      value: stats.completedToday,
-      trend: stats.completedToday > 0 ? 'up' : 'down',
-      trendDirection: stats.completedToday > 0 ? 'positive' : 'neutral'
+  // Helper to scroll to the add note section
+  const scrollToAddNote = () => {
+    const element = document.getElementById("add-note-section")
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" })
     }
-  ], [stats])
+  }
+
+  // Prepare stats array for CompactStatsRow
+  const statsArray = useMemo(
+    () => [
+      {
+        label: "Overdue",
+        value: stats.overdue,
+        trend: stats.overdue > 0 ? "up" : "down",
+        trendDirection: stats.overdue > 0 ? "negative" : "positive",
+      },
+      {
+        label: "Today's Pending",
+        value: stats.todayPending,
+        trend: stats.todayPending > 0 ? "up" : "down",
+        trendDirection: stats.todayPending > 0 ? "neutral" : "positive",
+      },
+      {
+        label: "Completed Today",
+        value: stats.completedToday,
+        trend: stats.completedToday > 0 ? "up" : "down",
+        trendDirection: stats.completedToday > 0 ? "positive" : "neutral",
+      },
+    ],
+    [stats],
+  )
 
   if (loading) {
     return (
@@ -416,12 +387,10 @@ export default function FollowUpPage() {
           </div>
         </div>
 
-        {/* Stats Section - Choose between Design 1 or Design 3 */}
+        {/* Stats Section */}
         {useCompactStats ? (
-          // Design 3: Ultra Compact Single Row
           <CompactStatsRow stats={statsArray} />
         ) : (
-          // Design 1: Enhanced Individual Cards
           <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
             <StatCard
               label="Overdue"
@@ -459,7 +428,6 @@ export default function FollowUpPage() {
           >
             All Follow-Ups
           </Button>
-          
         </div>
 
         <Card>
@@ -474,6 +442,9 @@ export default function FollowUpPage() {
                     </th>
                     <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-900 whitespace-nowrap">
                       Follow-Up Date
+                    </th>
+                    <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-900 whitespace-nowrap">
+                      Contact No
                     </th>
                     <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-900 whitespace-nowrap">
                       Agent
@@ -499,46 +470,7 @@ export default function FollowUpPage() {
           </div>
         </Card>
 
-        <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Follow-Up" size="lg">
-          <div className="space-y-4">
-            <FormSelect
-              label="Select Enquiry"
-              value={addForm.enquiryId}
-              onChange={(e) => setAddForm({ ...addForm, enquiryId: e.target.value })}
-              options={enquiries.map((e) => ({
-                value: e.enquiryId,
-                label: `${e.clientName} - ${e.property}`,
-              }))}
-              placeholder="Select an enquiry"
-              required
-            />
-
-            <FormInput
-              label="Next Follow-Up Date"
-              type="date"
-              value={addForm.followUpDate}
-              onChange={(e) => setAddForm({ ...addForm, followUpDate: e.target.value })}
-              required
-            />
-
-            <FormTextarea
-              label="Description"
-              value={addForm.description}
-              onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
-              rows={3}
-            />
-
-            <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-4">
-              <Button onClick={() => setShowAddModal(false)} variant="secondary" className="w-full sm:w-auto">
-                Cancel
-              </Button>
-              <Button onClick={handleAddFollowUp} variant="primary" className="w-full sm:w-auto">
-                Create Follow-Up
-              </Button>
-            </div>
-          </div>
-        </Modal>
-
+        {/* Complete Follow Up Modal */}
         <Modal
           isOpen={showCompleteModal}
           onClose={() => setShowCompleteModal(false)}
@@ -591,73 +523,90 @@ export default function FollowUpPage() {
           </div>
         </Modal>
 
+        {/* Timeline Modal */}
         <TwoColumnModal
           isOpen={showTimelineModal}
           onClose={() => setShowTimelineModal(false)}
           title="Follow-Up Timeline"
           leftContent={
-            <div className="overflow-y-auto max-h-[calc(90vh-200px)]">
-              <ModalSection title="Activity Timeline" icon={Calendar} iconColor="text-purple-600">
-                <Timeline events={[...timelineEvents].reverse()} />
-              </ModalSection>
-            </div>
+            selectedFollowUp && (
+              <div className="flex flex-col h-full">
+                
+               <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
+                    <p className="text-md font-bold text-gray-900">{selectedFollowUp.clientName}</p>
+                    <div className="flex items-center gap-2">
+                        <Phone size={14} className="text-gray-400" />
+                        <span className="text-sm font-medium text-gray-700">{selectedFollowUp.mobileNumber}</span>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2 max-h-[calc(90vh-350px)]">
+                  <div className="flex items-center justify-between mb-4 sticky top-0 bg-white z-20 py-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={20} className="text-purple-600" />
+                      <h3 className="font-semibold text-gray-900">Activity Timeline</h3>
+                    </div>
+                    {/* Plus Button for Mobile Scrolling */}
+                    <button
+                      onClick={scrollToAddNote}
+                      className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-colors"
+                      aria-label="Add Note"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+
+                  <Timeline events={[...timelineEvents].reverse()} />
+                </div>
+              </div>
+            )
           }
           rightContent={
-             selectedFollowUp && (
+            selectedFollowUp && (
               <div className="space-y-6 px-2 overflow-y-auto max-h-[calc(90vh-200px)]">
                 <ModalSection title="Follow-Up Details" icon={Calendar} iconColor="text-indigo-600">
                   <div className="space-y-4">
                     <div>
-                      <p className="text-xs md:text-sm text-gray-600 mb-1">Client</p>
-                      <p className="text-sm md:text-base font-semibold text-gray-900">{selectedFollowUp.clientName}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600 mb-1">Follow-Up Date</p>
+                      <p className="text-sm md:text-md text-gray-600 mb-1">Follow-Up Date</p>
                       <p className="text-sm md:text-base font-semibold text-gray-900">
                         {formatDate(selectedFollowUp.followUpNextDate)}
                       </p>
                     </div>
+                  </div>
+                </ModalSection>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <User size={16} className="text-gray-400" />
-                        <p className="text-xs md:text-sm font-semibold text-gray-900">
-                          {selectedFollowUp.agentName || "Unassigned"}
-                        </p>
-                      </div>
+                {/* Add Note Section with ID for scrolling */}
+                <div id="add-note-section">
+                  <ModalSection title="Add New Note" icon={FileText} iconColor="text-green-600">
+                    <div className="space-y-3">
+                      <FormInput
+                        value={nodeForm.body}
+                        onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
+                        placeholder="Enter your note..."
+                      />
+                      <FormSelect
+                        label="Event Tag"
+                        value={nodeForm.eventTag}
+                        onChange={(e) => setNodeForm({ ...nodeForm, eventTag: e.target.value })}
+                        options={Object.entries(FOLLOWUP_EVENT_TAGS).map(([key, value]) => ({
+                          value: value,
+                          label: value,
+                        }))}
+                        required
+                      />
+                      <FormInput
+                        type="datetime-local"
+                        label="Next Follow Up Date (optional)"
+                        value={nodeForm.followUpDateTime}
+                        onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
+                      />
+
+                      <Button onClick={handleAddNote} variant="primary" className="w-full">
+                        Add Note
+                      </Button>
                     </div>
-                  </div>
-                </ModalSection>
-                <ModalSection title="Add New Note" icon={FileText} iconColor="text-green-600">
-                  <div className="space-y-3">
-                    <FormInput
-                      value={nodeForm.body}
-                      onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
-                      placeholder="Enter your note..."
-                    />
-                    <FormSelect
-                      label="Event Tag"
-                      value={nodeForm.eventTag}
-                      onChange={(e) => setNodeForm({ ...nodeForm, eventTag: e.target.value })}
-                      options={Object.entries(FOLLOWUP_EVENT_TAGS).map(([key, value]) => ({
-                        value: value,
-                        label: value,
-                      }))}
-                      required
-                    />
-                    <FormInput
-                      type="datetime-local"
-                      label="Next Follow Up Date (optional)"
-                      value={nodeForm.followUpDateTime}
-                      onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
-                    />
-
-                    <Button onClick={handleAddNote} variant="primary" className="w-full">
-                      Add Note
-                    </Button>
-                  </div>
-                </ModalSection>
+                  </ModalSection>
+                </div>
               </div>
             )
           }

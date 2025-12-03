@@ -9,13 +9,25 @@ import { Button } from "../components/ui/Button"
 import { Table } from "../components/ui/Table"
 import { FormInput } from "../components/ui/FormInput"
 import { Modal } from "../components/ui/Modal"
-import { ArrowLeft, Edit, Trash2, Plus, X, Building2, FileText, Download, Eye } from "lucide-react"
+import { SkeletonLoader } from "../components/ui/SkeletonLoader"
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Plus,
+  X,
+  Building2,
+  FileText,
+  Download,
+  Eye,
+} from "lucide-react"
 import { formatDate } from "../utils/helpers"
 import { projectService } from "../services/projectService"
-import { SkeletonLoader } from "../components/ui/SkeletonLoader"
-
-
 import { DOCUMENT_TYPE } from "../utils/constants"
+import { v4 as uuidv4 } from "uuid"
+
+// Import the WingModal from the Registration folder (Adjust path if necessary)
+import WingModal from "./Registration/modals/WingModal"
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
@@ -34,24 +46,56 @@ export default function ProjectDetailPage() {
   const [banks, setBanks] = useState([])
   const [documents, setDocuments] = useState([])
 
-  // Modal/Form States
+  // --- Modal/Form States ---
+
+  // Basic Info
   const [isEditingBasic, setIsEditingBasic] = useState(false)
   const [basicForm, setBasicForm] = useState({})
 
-  const [isAddingWing, setIsAddingWing] = useState(false)
-  const [wingForm, setWingForm] = useState({ wingName: "", noOfFloors: 0, noOfProperties: 0, floors: [] })
+  // --- WINGS STATE (Complex Modal Logic) ---
+  const [wingModalOpen, setWingModalOpen] = useState(false)
+  const [viewWingModalOpen, setViewWingModalOpen] = useState(false)
+  const [selectedWing, setSelectedWing] = useState(null) // For Viewing
+  
+  // Wing Form State (Matches WingModal requirements)
+  const [wingForm, setWingForm] = useState({
+    wingId: null,
+    wingName: "",
+    noOfFloors: "",
+    manualFloorEntry: false,
+  })
+  
+  // Floors State for Wing Modal
+  const [currentWingFloors, setCurrentWingFloors] = useState([])
+  const [floorInput, setFloorInput] = useState({
+    floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: ""
+  })
+  const [editingFloorIndex, setEditingFloorIndex] = useState(-1)
 
+  // Banks
   const [isAddingBank, setIsAddingBank] = useState(false)
   const [editingBankId, setEditingBankId] = useState(null)
-  const [bankForm, setBankForm] = useState({ bankName: "", branchName: "", contactPerson: "", contactNumber: "" })
+  const [bankForm, setBankForm] = useState({
+    bankName: "",
+    branchName: "",
+    contactPerson: "",
+    contactNumber: "",
+  })
 
+  // Amenities
   const [isAddingAmenity, setIsAddingAmenity] = useState(false)
   const [editingAmenityId, setEditingAmenityId] = useState(null)
   const [amenityForm, setAmenityForm] = useState({ amenityName: "" })
 
+  // Documents
   const [isAddingDocument, setIsAddingDocument] = useState(false)
-  const [documentForm, setDocumentForm] = useState({ documentType: "", documentTitle: "", file: null })
+  const [documentForm, setDocumentForm] = useState({
+    documentType: "",
+    documentTitle: "",
+    file: null,
+  })
 
+  // Disbursements
   const [isEditingDisbursements, setIsEditingDisbursements] = useState(false)
   const [disbursementForm, setDisbursementForm] = useState([])
 
@@ -68,18 +112,9 @@ export default function ProjectDetailPage() {
         }),
         projectService.getProjectEnquiries(projectId).catch(() => []),
         projectService.getDisbursements(projectId).catch(() => []),
-        projectService.getAmenitiesByProject(projectId).catch((err) => {
-          console.error("Error fetching amenities:", err)
-          return []
-        }),
-        projectService.getBanksByProject(projectId).catch((err) => {
-          console.error("Error fetching banks:", err)
-          return []
-        }),
-        projectService.getDocumentsByProject(projectId).catch((err) => {
-          console.error("Error fetching documents:", err)
-          return []
-        }),
+        projectService.getAmenitiesByProject(projectId).catch(() => []),
+        projectService.getBanksByProject(projectId).catch(() => []),
+        projectService.getDocumentsByProject(projectId).catch(() => []),
       ])
 
       if (pData) setProject(pData)
@@ -107,22 +142,21 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Helper to re-fetch just specific lists
-  const refreshAmenities = async () => {
-    try {
-      const data = await projectService.getAmenitiesByProject(projectId)
-      setAmenities(data || [])
-    } catch (err) {
-      toastError("Failed to refresh amenities")
-    }
-  }
-
   const refreshBanks = async () => {
     try {
       const data = await projectService.getBanksByProject(projectId)
       setBanks(data || [])
     } catch (err) {
       toastError("Failed to refresh banks")
+    }
+  }
+
+  const refreshAmenities = async () => {
+    try {
+      const data = await projectService.getAmenitiesByProject(projectId)
+      setAmenities(data || [])
+    } catch (err) {
+      toastError("Failed to refresh amenities")
     }
   }
 
@@ -141,7 +175,7 @@ export default function ProjectDetailPage() {
     }
   }, [projectId])
 
-  // --- Handlers: Basic Info & Wings (Unchanged Logic) ---
+  // --- Handlers: Basic Info ---
   const handleUpdateBasicInfo = async () => {
     try {
       await projectService.updateProject(projectId, basicForm)
@@ -153,39 +187,141 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const handleCreateWing = async () => {
-    try {
-      let floorsPayload = wingForm.floors
-      if (!floorsPayload || floorsPayload.length === 0) {
-        const floorsCount = Number.parseInt(wingForm.noOfFloors) || 1
-        const propsCount = Number.parseInt(wingForm.noOfProperties) || 1
-        const propsPerFloor = Math.max(1, Math.floor(propsCount / floorsCount))
-        floorsPayload = Array.from({ length: floorsCount }, (_, i) => ({
-          floorNo: i,
+  // --- HANDLERS: WINGS (Complex Logic) ---
+
+  // 1. Auto-generate floors if manual entry is off
+  useEffect(() => {
+    if (wingModalOpen && !wingForm.manualFloorEntry && wingForm.noOfFloors && currentWingFloors.length === 0) {
+      const count = parseInt(wingForm.noOfFloors) || 0
+      const autoFloors = []
+      for (let i = 0; i <= count; i++) {
+        autoFloors.push({
+          floorNo: i.toString(),
           floorName: i === 0 ? "Ground Floor" : `Floor ${i}`,
           propertyType: "Residential",
-          property: "",
-          area: 0,
-          quantity: propsPerFloor,
-        }))
+          property: "2 BHK",
+          area: "0",
+          quantity: "0"
+        })
       }
-      const payload = {
-        wingName: wingForm.wingName,
-        noOfFloors: Number.parseInt(wingForm.noOfFloors),
-        noOfProperties: Number.parseInt(wingForm.noOfProperties),
-        floors: floorsPayload,
-      }
-      await projectService.createWing(projectId, payload)
-      success("Wing created")
-      setIsAddingWing(false)
-      setWingForm({ wingName: "", noOfFloors: 0, noOfProperties: 0, floors: [] })
-      fetchData()
-    } catch (err) {
-      toastError("Failed to create wing")
+      setCurrentWingFloors(autoFloors)
+    }
+  }, [wingForm.noOfFloors, wingForm.manualFloorEntry, wingModalOpen])
+
+  // 2. Open Modal for Create
+  const openAddWingModal = () => {
+    setWingForm({ wingId: null, wingName: "", noOfFloors: "", manualFloorEntry: false })
+    setCurrentWingFloors([])
+    setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
+    setEditingFloorIndex(-1)
+    setWingModalOpen(true)
+  }
+
+  // 3. Open Modal for Edit
+  const openEditWingModal = (wing) => {
+    setWingForm({
+      wingId: wing.id || wing.wingId,
+      wingName: wing.wingName,
+      noOfFloors: wing.noOfFloors,
+      manualFloorEntry: true // Set true to show the table immediately
+    })
+    // Deep copy floors to avoid mutating directly
+    setCurrentWingFloors(wing.floors ? JSON.parse(JSON.stringify(wing.floors)) : [])
+    setWingModalOpen(true)
+  }
+
+  // 4. Floor Row Handlers (Passed to WingModal)
+  const handleAddOrUpdateFloorRow = () => {
+    if (!floorInput.floorName) { toastError("Floor Name is required"); return }
+
+    const newFloorData = { ...floorInput }
+    // Auto-assign floorNo if missing
+    if (newFloorData.floorNo === "" || newFloorData.floorNo === undefined) {
+       newFloorData.floorNo = editingFloorIndex >= 0 
+          ? currentWingFloors[editingFloorIndex].floorNo 
+          : currentWingFloors.length.toString()
+    }
+    
+    if (editingFloorIndex >= 0) {
+      const updatedFloors = [...currentWingFloors]
+      updatedFloors[editingFloorIndex] = newFloorData
+      setCurrentWingFloors(updatedFloors)
+      setEditingFloorIndex(-1)
+      success("Floor updated")
+    } else {
+      setCurrentWingFloors([...currentWingFloors, newFloorData])
+    }
+    setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
+  }
+
+  const handleEditFloorRow = (index) => {
+    setFloorInput(currentWingFloors[index])
+    setEditingFloorIndex(index)
+  }
+
+  const handleDeleteFloorRow = (index) => {
+    const updated = currentWingFloors.filter((_, i) => i !== index)
+    setCurrentWingFloors(updated)
+    if (editingFloorIndex === index) {
+      setEditingFloorIndex(-1)
+      setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
     }
   }
 
-  // --- Handlers: Bank Info ---
+  // 5. Save Wing (Create or Update)
+  const handleSaveWing = async () => {
+    if (!wingForm.wingName) { toastError("Wing Name is required"); return }
+    if (currentWingFloors.length === 0) { toastError("Please add at least one floor"); return }
+
+    try {
+      const totalProps = currentWingFloors.reduce((sum, floor) => sum + (parseInt(floor.quantity) || 0), 0)
+      
+      const payload = {
+        wingName: wingForm.wingName,
+        noOfFloors: parseInt(wingForm.noOfFloors) || 0,
+        noOfProperties: totalProps,
+        floors: currentWingFloors.map(f => ({
+            ...f,
+            floorNo: parseInt(f.floorNo) || 0,
+            quantity: parseInt(f.quantity) || 0
+        }))
+      }
+
+      if (wingForm.wingId) {
+        // Update
+        await projectService.updateWing(wingForm.wingId, payload)
+        success("Wing updated successfully")
+      } else {
+        // Create
+        await projectService.createWing(projectId, payload)
+        success("Wing created successfully")
+      }
+
+      setWingModalOpen(false)
+      fetchData() // Refresh project data
+    } catch (err) {
+      console.error(err)
+      toastError("Failed to save wing")
+    }
+  }
+
+  const handleDeleteWing = async (id) => {
+    if (!window.confirm("Delete this wing? All associated properties will be deleted.")) return
+    try {
+      await projectService.deleteWing(id)
+      success("Wing deleted")
+      fetchData()
+    } catch (err) {
+      toastError("Failed to delete wing")
+    }
+  }
+
+  const openViewWingModal = (wing) => {
+    setSelectedWing(wing)
+    setViewWingModalOpen(true)
+  }
+
+  // --- Handlers: Bank Info (FIXED) ---
 
   const handleSaveBank = async () => {
     try {
@@ -195,6 +331,7 @@ export default function ProjectDetailPage() {
       }
 
       if (editingBankId) {
+        // FIXED: Use bankProjectId for updates
         await projectService.updateBankInfo(editingBankId, bankForm)
         success("Bank info updated")
       } else {
@@ -218,19 +355,14 @@ export default function ProjectDetailPage() {
       success("Bank deleted")
       await refreshBanks()
     } catch (err) {
-      console.error("Error deleting bank:", err)
       toastError("Failed to delete bank")
     }
   }
 
   // --- Handlers: Amenities ---
-
   const handleSaveAmenity = async () => {
     try {
-      if (!amenityForm.amenityName) {
-        toastError("Please enter amenity name")
-        return
-      }
+      if (!amenityForm.amenityName) { toastError("Please enter amenity name"); return }
 
       if (editingAmenityId) {
         await projectService.updateAmenity(editingAmenityId, amenityForm)
@@ -244,7 +376,6 @@ export default function ProjectDetailPage() {
       setAmenityForm({ amenityName: "" })
       await refreshAmenities()
     } catch (err) {
-      console.error("Error saving amenity:", err)
       toastError("Failed to save amenity")
     }
   }
@@ -256,27 +387,23 @@ export default function ProjectDetailPage() {
       success("Amenity deleted")
       await refreshAmenities()
     } catch (err) {
-      console.error("Error deleting amenity:", err)
       toastError("Failed to delete amenity")
     }
   }
 
   // --- Handlers: Documents ---
-
   const handleCreateDocument = async () => {
     if (!documentForm.file || !documentForm.documentTitle || !documentForm.documentType) {
       toastError("Please fill all fields and select a file")
       return
     }
-
     try {
       await projectService.createDocument(projectId, documentForm)
-        success("Document uploaded successfully")
-        setIsAddingDocument(false)
-        setDocumentForm({ documentType: "", documentTitle: "", file: null })
-        await refreshDocuments()
+      success("Document uploaded successfully")
+      setIsAddingDocument(false)
+      setDocumentForm({ documentType: "", documentTitle: "", file: null })
+      await refreshDocuments()
     } catch (err) {
-      console.error("Error uploading document:", err)
       toastError("Failed to upload document")
     }
   }
@@ -288,14 +415,15 @@ export default function ProjectDetailPage() {
       success("Document deleted")
       await refreshDocuments()
     } catch (err) {
-      console.error("Error deleting document:", err)
       toastError("Failed to delete document")
     }
   }
 
   const handlePreviewDocument = async (doc) => {
     try {
-      const fileUrl = `https://realestate.ysminfosolution.com/api/documents/${doc.id || doc.documentId}`
+      const fileUrl = `${import.meta.env.VITE_API_URL}/documents/${
+        doc.id || doc.documentId
+      }`
       const fileType = doc.fileName?.split(".").pop()?.toLowerCase() || "pdf"
 
       setPreviewModal({
@@ -314,7 +442,6 @@ export default function ProjectDetailPage() {
       const path = doc.filePath || doc.path || `documents/${doc.id}`
       await projectService.downloadDocument(path)
     } catch (e) {
-      console.error("Download error:", e)
       toastError("Download failed")
     }
   }
@@ -333,7 +460,7 @@ export default function ProjectDetailPage() {
   if (!project)
     return (
       <AppLayout>
-        <div>Project not found</div>
+        <div className="p-4 text-center">Project not found</div>
       </AppLayout>
     )
 
@@ -343,7 +470,7 @@ export default function ProjectDetailPage() {
       content: (
         <div className="space-y-6">
           <Card>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
               <h3 className="text-lg font-semibold text-gray-900">Basic Details</h3>
               {!isEditingBasic ? (
                 <Button variant="outline" size="sm" onClick={() => setIsEditingBasic(true)}>
@@ -367,14 +494,18 @@ export default function ProjectDetailPage() {
                   <label className="block text-sm font-medium mb-1">Project Name</label>
                   <FormInput
                     value={basicForm.projectName}
-                    onChange={(e) => setBasicForm({ ...basicForm, projectName: e.target.value })}
+                    onChange={(e) =>
+                      setBasicForm({ ...basicForm, projectName: e.target.value })
+                    }
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Address</label>
                   <FormInput
                     value={basicForm.projectAddress}
-                    onChange={(e) => setBasicForm({ ...basicForm, projectAddress: e.target.value })}
+                    onChange={(e) =>
+                      setBasicForm({ ...basicForm, projectAddress: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -390,7 +521,9 @@ export default function ProjectDetailPage() {
                   <FormInput
                     type="date"
                     value={basicForm.completionDate}
-                    onChange={(e) => setBasicForm({ ...basicForm, completionDate: e.target.value })}
+                    onChange={(e) =>
+                      setBasicForm({ ...basicForm, completionDate: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -427,7 +560,10 @@ export default function ProjectDetailPage() {
                   <p className="text-sm text-gray-500">Progress</p>
                   <div className="flex items-center gap-2">
                     <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${project.progress}%` }}></div>
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{ width: `${project.progress}%` }}
+                      ></div>
                     </div>
                     <span className="text-sm font-medium">{project.progress}%</span>
                   </div>
@@ -442,55 +578,129 @@ export default function ProjectDetailPage() {
       label: "Wings",
       content: (
         <div className="space-y-6">
-          <div className="flex justify-end">
-            <Button onClick={() => setIsAddingWing(true)}>
-              <Plus size={18} className="mr-2" /> Add Wing
-            </Button>
+          <div className="flex justify-between items-center">
+             <h3 className="text-lg font-semibold">Wings Configuration</h3>
+             <Button onClick={openAddWingModal} className="w-full sm:w-auto">
+               <Plus size={18} className="mr-2" /> Add Wing
+             </Button>
           </div>
 
-          {isAddingWing && (
-            <Card className="mb-4 border-blue-200 bg-blue-50">
-              <h4 className="font-semibold mb-3">New Wing Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <FormInput
-                  placeholder="Wing Name (e.g. Wing A)"
-                  value={wingForm.wingName}
-                  onChange={(e) => setWingForm({ ...wingForm, wingName: e.target.value })}
-                />
-                <FormInput
-                  type="number"
-                  placeholder="No. of Floors"
-                  value={wingForm.noOfFloors}
-                  onChange={(e) => setWingForm({ ...wingForm, noOfFloors: e.target.value })}
-                />
-                <FormInput
-                  type="number"
-                  placeholder="Total Properties"
-                  value={wingForm.noOfProperties}
-                  onChange={(e) => setWingForm({ ...wingForm, noOfProperties: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setIsAddingWing(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateWing}>Create Wing</Button>
-              </div>
-            </Card>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {project.wings?.map((wing) => (
-              <Card key={wing.id || wing.wingId} className="hover:shadow-md transition-shadow">
-                <h4 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Building2 size={20} className="text-blue-600" /> {wing.wingName}
-                </h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  {wing.noOfFloors} Floors • {wing.noOfProperties} Properties
-                </p>
+              <Card
+                key={wing.id || wing.wingId}
+                className="hover:shadow-md transition-shadow relative"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <Building2 size={20} className="text-blue-600" /> {wing.wingName}
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-2">
+                      <span className="font-semibold">{wing.noOfFloors}</span> Floors
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      <span className="font-semibold">{wing.noOfProperties}</span> Total
+                      Properties
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openViewWingModal(wing)}
+                      className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded"
+                      title="View Details"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button
+                      onClick={() => openEditWingModal(wing)}
+                      className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                      title="Edit Wing"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteWing(wing.id || wing.wingId)}
+                      className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                      title="Delete Wing"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
               </Card>
             ))}
+            {(!project.wings || project.wings.length === 0) && (
+              <div className="col-span-full text-center py-10 bg-gray-50 rounded-lg border border-dashed text-gray-500">
+                No wings added yet. Click "Add Wing" to get started.
+              </div>
+            )}
           </div>
+
+          {/* New Complex Wing Modal */}
+          <WingModal 
+              isOpen={wingModalOpen} 
+              onClose={() => setWingModalOpen(false)} 
+              onSave={handleSaveWing}
+              wingForm={wingForm} setWingForm={setWingForm}
+              floorInput={floorInput} setFloorInput={setFloorInput}
+              currentWingFloors={currentWingFloors} editingFloorIndex={editingFloorIndex}
+              onAddFloor={handleAddOrUpdateFloorRow} onEditFloor={handleEditFloorRow} onDeleteFloor={handleDeleteFloorRow}
+          />
+
+          {/* Wing View Modal */}
+          <Modal
+            isOpen={viewWingModalOpen}
+            onClose={() => setViewWingModalOpen(false)}
+            title={`Details: ${selectedWing?.wingName || "Wing"}`}
+            size="lg"
+          >
+            {selectedWing ? (
+              <div className="space-y-4">
+                <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3 mx-2">
+                        <p className="text-xs text-gray-500 uppercase">Floors</p>
+                        <p className="text-md font-semibold">{selectedWing.noOfFloors}</p>
+                    </div>
+                    <div className="flex items-center gap-3 mx-2">
+                        <p className="text-xs text-gray-500 uppercase">Properties</p>
+                        <p className="text-md font-semibold">{selectedWing.noOfProperties}</p>
+                    </div>
+                </div>
+
+                {selectedWing.floors && selectedWing.floors.length > 0 ? (
+                  <div className="max-h-60 overflow-y-auto border rounded">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-gray-100 sticky top-0">
+                        <tr>
+                          <th className="p-2 border-b">Floor</th>
+                          <th className="p-2 border-b">Type</th>
+                          <th className="p-2 border-b">Property</th>
+                          <th className="p-2 border-b">Area</th>
+                          <th className="p-2 border-b">Qty</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {selectedWing.floors.map((f, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="p-2">{f.floorName}</td>
+                            <td className="p-2">{f.propertyType}</td>
+                            <td className="p-2">{f.property}</td>
+                            <td className="p-2">{f.area}</td>
+                            <td className="p-2">{f.quantity}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center">No floor details available.</p>
+                )}
+              </div>
+            ) : (
+              <></>
+            )}
+          </Modal>
         </div>
       ),
     },
@@ -503,7 +713,12 @@ export default function ProjectDetailPage() {
             <Button
               onClick={() => {
                 setEditingBankId(null)
-                setBankForm({ bankName: "", branchName: "", contactPerson: "", contactNumber: "" })
+                setBankForm({
+                  bankName: "",
+                  branchName: "",
+                  contactPerson: "",
+                  contactNumber: "",
+                })
                 setIsAddingBank(true)
               }}
             >
@@ -513,25 +728,27 @@ export default function ProjectDetailPage() {
 
           {isAddingBank && (
             <Card className="mb-4 bg-gray-50">
-              <h4 className="font-semibold mb-3">{editingBankId ? "Edit Bank" : "Add New Bank"}</h4>
+              <h4 className="font-semibold mb-3">
+                {editingBankId ? "Edit Bank Details" : "Add New Bank"}
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <FormInput
-                  placeholder="Bank Name *"
+                  label="Bank Name *"
                   value={bankForm.bankName}
                   onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
                 />
                 <FormInput
-                  placeholder="Branch Name *"
+                  label="Branch Name *"
                   value={bankForm.branchName}
                   onChange={(e) => setBankForm({ ...bankForm, branchName: e.target.value })}
                 />
                 <FormInput
-                  placeholder="Contact Person"
+                  label="Contact Person"
                   value={bankForm.contactPerson}
                   onChange={(e) => setBankForm({ ...bankForm, contactPerson: e.target.value })}
                 />
                 <FormInput
-                  placeholder="Contact Number"
+                  label="Contact Number"
                   value={bankForm.contactNumber}
                   onChange={(e) => setBankForm({ ...bankForm, contactNumber: e.target.value })}
                 />
@@ -540,7 +757,9 @@ export default function ProjectDetailPage() {
                 <Button variant="ghost" onClick={() => setIsAddingBank(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveBank}>Save Bank</Button>
+                <Button onClick={handleSaveBank}>
+                  {editingBankId ? "Update Bank" : "Save Bank"}
+                </Button>
               </div>
             </Card>
           )}
@@ -548,7 +767,7 @@ export default function ProjectDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {banks && banks.length > 0 ? (
               banks.map((bank) => (
-                <Card key={bank.id || bank.bankInfoId}>
+                <Card key={bank.bankProjectId || bank.id}>
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-bold text-lg">{bank.bankName}</h4>
                     <div className="flex gap-1">
@@ -556,13 +775,19 @@ export default function ProjectDetailPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
+                          // FIX: Capture the specific bankProjectId for updates
+                          const idToEdit = bank.bankProjectId
+                          if (!idToEdit) {
+                            toastError("Error: Bank ID missing")
+                            return
+                          }
+                          setEditingBankId(idToEdit)
                           setBankForm({
                             bankName: bank.bankName,
                             branchName: bank.branchName,
-                            contactPerson: bank.contactPerson,
-                            contactNumber: bank.contactNumber,
+                            contactPerson: bank.contactPerson || "",
+                            contactNumber: bank.contactNumber || "",
                           })
-                          setEditingBankId(bank.id || bank.bankInfoId)
                           setIsAddingBank(true)
                         }}
                       >
@@ -572,7 +797,7 @@ export default function ProjectDetailPage() {
                         variant="ghost"
                         size="sm"
                         className="text-red-500 hover:text-red-700"
-                        onClick={() => handleDeleteBank(bank.id || bank.bankInfoId)}
+                        onClick={() => handleDeleteBank(bank.bankProjectId)}
                       >
                         <Trash2 size={16} />
                       </Button>
@@ -622,7 +847,9 @@ export default function ProjectDetailPage() {
                   <label className="text-sm font-medium mb-1 block">Amenity Name</label>
                   <FormInput
                     value={amenityForm.amenityName}
-                    onChange={(e) => setAmenityForm({ ...amenityForm, amenityName: e.target.value })}
+                    onChange={(e) =>
+                      setAmenityForm({ ...amenityForm, amenityName: e.target.value })
+                    }
                     placeholder="e.g. Swimming Pool, Gym"
                   />
                 </div>
@@ -630,7 +857,11 @@ export default function ProjectDetailPage() {
                   <Button className="flex-1 sm:flex-none" onClick={handleSaveAmenity}>
                     Save
                   </Button>
-                  <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => setIsAddingAmenity(false)}>
+                  <Button
+                    variant="ghost"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => setIsAddingAmenity(false)}
+                  >
                     <X size={18} />
                   </Button>
                 </div>
@@ -692,29 +923,29 @@ export default function ProjectDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="text-sm mb-1 block">Document Type</label>
-
-                <select
+                  <select
                     className="w-full border rounded p-2 text-sm bg-white"
                     value={documentForm.documentType}
-                    onChange={(e) => setDocumentForm({ ...documentForm, documentType: e.target.value })}
-                    >
+                    onChange={(e) =>
+                      setDocumentForm({ ...documentForm, documentType: e.target.value })
+                    }
+                  >
                     <option value="">Select Document Type</option>
-
                     {Object.keys(DOCUMENT_TYPE).map((key) => (
-                        <option key={key} value={DOCUMENT_TYPE[key]}>
+                      <option key={key} value={DOCUMENT_TYPE[key]}>
                         {DOCUMENT_TYPE[key]}
-                        </option>
+                      </option>
                     ))}
-                </select>
-
-
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm mb-1 block">Title</label>
                   <FormInput
                     placeholder="e.g. Area Chart"
                     value={documentForm.documentTitle}
-                    onChange={(e) => setDocumentForm({ ...documentForm, documentTitle: e.target.value })}
+                    onChange={(e) =>
+                      setDocumentForm({ ...documentForm, documentTitle: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -722,7 +953,9 @@ export default function ProjectDetailPage() {
                   <input
                     type="file"
                     className="w-full border rounded p-2 bg-white text-sm"
-                    onChange={(e) => setDocumentForm({ ...documentForm, file: e.target.files[0] })}
+                    onChange={(e) =>
+                      setDocumentForm({ ...documentForm, file: e.target.files[0] })
+                    }
                   />
                 </div>
               </div>
@@ -735,13 +968,19 @@ export default function ProjectDetailPage() {
             </Card>
           )}
 
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Title
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -796,7 +1035,11 @@ export default function ProjectDetailPage() {
           >
             <div className="flex flex-col items-center justify-center min-h-96 bg-gray-50 rounded-lg">
               {previewModal.fileType === "pdf" ? (
-                <iframe src={previewModal.fileUrl} className="w-full h-96 border-0" title="PDF Preview" />
+                <iframe
+                  src={previewModal.fileUrl}
+                  className="w-full h-96 border-0"
+                  title="PDF Preview"
+                />
               ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(previewModal.fileType) ? (
                 <img
                   src={previewModal.fileUrl || "/placeholder.svg"}
@@ -807,7 +1050,10 @@ export default function ProjectDetailPage() {
                 <div className="text-center">
                   <FileText size={48} className="mx-auto text-gray-400 mb-4" />
                   <p className="text-gray-600">Preview not available for this file type</p>
-                  <Button className="mt-4" onClick={() => handleDownloadDocument(previewModal.doc)}>
+                  <Button
+                    className="mt-4"
+                    onClick={() => handleDownloadDocument(previewModal.doc)}
+                  >
                     Download Instead
                   </Button>
                 </div>
@@ -827,7 +1073,9 @@ export default function ProjectDetailPage() {
               <Button
                 onClick={() => {
                   setDisbursementForm(
-                    disbursements.length ? disbursements : [{ disbursementTitle: "", description: "", percentage: "" }],
+                    disbursements.length
+                      ? disbursements
+                      : [{ disbursementTitle: "", description: "", percentage: "" }],
                   )
                   setIsEditingDisbursements(true)
                 }}
@@ -837,20 +1085,28 @@ export default function ProjectDetailPage() {
             )}
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stage</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Percentage</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Stage
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    Percentage
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {disbursements && disbursements.length > 0 ? (
                   disbursements.map((d, idx) => (
                     <tr key={idx}>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{d.disbursementTitle}</td>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                        {d.disbursementTitle}
+                      </td>
                       <td className="px-6 py-4 text-gray-500">{d.description}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-blue-600">
                         {d.percentage}%
@@ -875,18 +1131,28 @@ export default function ProjectDetailPage() {
       content: (
         <Card>
           {enquiries && enquiries.length > 0 ? (
-            <Table
-              columns={[
-                {
-                  key: "clientName",
-                  label: "Client Name",
-                  render: (val) => <p className="font-medium text-gray-900">{val}</p>,
-                },
-                { key: "budget", label: "Budget", render: (val) => <p className="text-gray-700">{val}</p> },
-                { key: "status", label: "Status", render: (val) => <Badge status={val}>{val}</Badge> },
-              ]}
-              data={enquiries}
-            />
+            <div className="overflow-x-auto">
+              <Table
+                columns={[
+                  {
+                    key: "clientName",
+                    label: "Client Name",
+                    render: (val) => <p className="font-medium text-gray-900">{val}</p>,
+                  },
+                  {
+                    key: "budget",
+                    label: "Budget",
+                    render: (val) => <p className="text-gray-700">{val}</p>,
+                  },
+                  {
+                    key: "status",
+                    label: "Status",
+                    render: (val) => <Badge status={val}>{val}</Badge>,
+                  },
+                ]}
+                data={enquiries}
+              />
+            </div>
           ) : (
             <div className="text-center py-8 text-gray-500">No enquiries for this project</div>
           )}
@@ -901,11 +1167,16 @@ export default function ProjectDetailPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4 w-full sm:w-auto">
-            <button onClick={() => navigate("/projects")} className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0">
+            <button
+              onClick={() => navigate("/projects")}
+              className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
+            >
               <ArrowLeft size={24} className="text-gray-600" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">{project.projectName}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
+                {project.projectName}
+              </h1>
               <p className="text-gray-600 mt-1 text-sm break-words flex items-center gap-2">
                 <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
                 {project.projectAddress}
@@ -923,13 +1194,12 @@ export default function ProjectDetailPage() {
                 }
               }}
             >
-              <Trash2 size={20} />
+              <Trash2 size={20} className="mr-2" />
               Delete Project
             </Button>
           </div>
         </div>
 
-        {/* Tabs */}
         <Tabs tabs={tabs} />
       </div>
     </AppLayout>

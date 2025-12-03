@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useToast } from "../components/ui/Toast"
 import { AppLayout } from "../components/layout/AppLayout"
@@ -10,7 +10,7 @@ import { Card } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
-import { Plus, Trash2, Eye } from "lucide-react"
+import { Plus, Trash2, Eye, Edit, Save } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { validateMahareraNo } from "../utils/helpers"
 import { projectService } from "../services/projectService"
@@ -33,10 +33,32 @@ export default function RegistrationPage() {
     address: "",
   })
 
-  // Step 2: Wings & Floors
+  // Step 2: Wings & Floors (UPDATED STATE)
   const [wings, setWings] = useState([])
   const [showWingModal, setShowWingModal] = useState(false)
-  const [wingForm, setWingForm] = useState({ wingName: "", noOfFloors: "", noOfProperties: "" })
+  
+  // State for the Wing Modal Form
+  const [wingForm, setWingForm] = useState({ 
+    wingId: null,
+    wingName: "", 
+    noOfFloors: "", 
+    manualFloorEntry: false 
+  })
+
+  // State for the List of Floors inside the Modal
+  const [currentWingFloors, setCurrentWingFloors] = useState([])
+
+  // State for the Single Floor Input line (Edit/Add) inside the Modal
+  const [floorInput, setFloorInput] = useState({
+    floorNo: "",
+    floorName: "",
+    propertyType: "",
+    property: "",
+    area: "",
+    quantity: ""
+  })
+  
+  const [editingFloorIndex, setEditingFloorIndex] = useState(-1)
 
   // Step 3: Bank Info
   const [banks, setBanks] = useState([])
@@ -63,7 +85,125 @@ export default function RegistrationPage() {
 
   const steps = ["Basic Info", "Wings & Floors", "Bank Info", "Amenities", "Disbursements", "Review"]
 
-  // Validation
+  // --- LOGIC FOR STEP 2 (WINGS) ---
+
+  // Handle auto-generation of floors when "No. Of Floors" changes (if not manual)
+  useEffect(() => {
+    if (!wingForm.manualFloorEntry && wingForm.noOfFloors && currentWingFloors.length === 0) {
+      const count = parseInt(wingForm.noOfFloors) || 0
+      const autoFloors = []
+      
+      // Standard logic: 0 = Ground, 1 = Floor 1, etc.
+      for (let i = 0; i <= count; i++) {
+        autoFloors.push({
+          floorNo: i.toString(),
+          floorName: i === 0 ? "Ground Floor" : `Floor ${i}`,
+          propertyType: "Residential", // Default
+          property: "2 BHK", // Default
+          area: "0",
+          quantity: "0"
+        })
+      }
+      setCurrentWingFloors(autoFloors)
+    }
+  }, [wingForm.noOfFloors, wingForm.manualFloorEntry])
+
+  const resetWingModal = () => {
+    setWingForm({ wingId: null, wingName: "", noOfFloors: "", manualFloorEntry: false })
+    setCurrentWingFloors([])
+    setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
+    setEditingFloorIndex(-1)
+  }
+
+  const handleOpenAddWing = () => {
+    resetWingModal()
+    setShowWingModal(true)
+  }
+
+  const handleAddOrUpdateFloorRow = () => {
+    if (!floorInput.floorName) {
+      error("Floor Name is required")
+      return
+    }
+
+    const newFloorData = { ...floorInput }
+
+    // If floorNo is empty (e.g. manual entry), try to guess it or leave it
+    if (newFloorData.floorNo === "" || newFloorData.floorNo === undefined) {
+       // If adding new, maybe set it to the next index
+       newFloorData.floorNo = editingFloorIndex >= 0 
+          ? currentWingFloors[editingFloorIndex].floorNo 
+          : currentWingFloors.length.toString()
+    }
+    
+    if (editingFloorIndex >= 0) {
+      // Update existing
+      const updatedFloors = [...currentWingFloors]
+      updatedFloors[editingFloorIndex] = newFloorData
+      setCurrentWingFloors(updatedFloors)
+      setEditingFloorIndex(-1)
+      success("Floor updated")
+    } else {
+      // Add new
+      setCurrentWingFloors([...currentWingFloors, newFloorData])
+    }
+
+    // Reset inputs
+    setFloorInput({ 
+      floorNo: "", 
+      floorName: "", 
+      propertyType: "", 
+      property: "", 
+      area: "", 
+      quantity: "" 
+    })
+  }
+
+  const handleEditFloorRow = (index) => {
+    setFloorInput(currentWingFloors[index])
+    setEditingFloorIndex(index)
+  }
+
+  const handleDeleteFloorRow = (index) => {
+    const updated = currentWingFloors.filter((_, i) => i !== index)
+    setCurrentWingFloors(updated)
+    if (editingFloorIndex === index) {
+      setEditingFloorIndex(-1)
+      setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
+    }
+  }
+
+  const handleSaveWing = () => {
+    if (!wingForm.wingName) {
+      error("Wing Name is required")
+      return
+    }
+    if (currentWingFloors.length === 0) {
+      error("Please add at least one floor configuration")
+      return
+    }
+
+    const totalProps = currentWingFloors.reduce((sum, floor) => sum + (parseInt(floor.quantity) || 0), 0)
+
+    const newWing = {
+      wingId: wingForm.wingId || uuidv4(),
+      wingName: wingForm.wingName,
+      noOfFloors: wingForm.noOfFloors,
+      noOfProperties: totalProps,
+      floors: currentWingFloors
+    }
+    
+    setWings([...wings, newWing])
+    setShowWingModal(false)
+    success("Wing saved successfully")
+  }
+
+  const handleDeleteWing = (id) => {
+    setWings(wings.filter(w => w.wingId !== id))
+  }
+
+  // --- LOGIC FOR STEP 2 END ---
+
   const validateStep = () => {
     if (currentStep === 0) {
       if (!basicInfo.projectName || !basicInfo.mahareraNo || !basicInfo.startDate || !basicInfo.completionDate) {
@@ -86,17 +226,6 @@ export default function RegistrationPage() {
 
   const handlePrev = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 0))
-  }
-
-  const handleAddWing = () => {
-    if (!wingForm.wingName || !wingForm.noOfFloors || !wingForm.noOfProperties) {
-      error("Please fill all wing fields")
-      return
-    }
-    setWings([...wings, { ...wingForm, wingId: uuidv4() }])
-    setWingForm({ wingName: "", noOfFloors: "", noOfProperties: "" })
-    setShowWingModal(false)
-    success("Wing added successfully")
   }
 
   const handleAddBank = () => {
@@ -181,6 +310,9 @@ export default function RegistrationPage() {
     setIsSubmitting(true)
 
     try {
+      // DEBUG: Log the payload before sending
+      // console.log("Preparing submission payload...")
+
       const projectData = {
         projectName: basicInfo.projectName,
         projectAddress: basicInfo.address,
@@ -191,20 +323,27 @@ export default function RegistrationPage() {
         progress: 0,
         path: "/",
 
-        // Wings with floors
+        // --- FIX FOR 500 ERROR: STRICT TYPE CONVERSION ---
         wings: wings.map((wing) => ({
           wingName: wing.wingName,
-          noOfFloors: Number.parseInt(wing.noOfFloors),
-          noOfProperties: Number.parseInt(wing.noOfProperties),
-          floors: Array.from({ length: Number.parseInt(wing.noOfFloors) }, (_, i) => ({
-            floorNo: i,
-            floorName: i === 0 ? "Ground Floor" : `${i} Floor`,
-            propertyType: "Residential",
-            property: `Property ${i + 1}`,
-            area: "95.5",
-            quantity: Number.parseInt(wing.noOfProperties) / Number.parseInt(wing.noOfFloors),
-          })),
+          noOfFloors: Number(wing.noOfFloors), // Ensure Integer
+          noOfProperties: Number(wing.noOfProperties), // Ensure Integer
+          floors: wing.floors.map(f => ({
+             // Ensure floorNo is an Integer. If invalid/empty, default to 0.
+             floorNo: (f.floorNo !== "" && !isNaN(f.floorNo)) ? Number(f.floorNo) : 0,
+             
+             floorName: f.floorName,
+             propertyType: f.propertyType,
+             property: f.property,
+             
+             // Ensure Area is a String (Original code used Strings for area)
+             area: String(f.area || "0"),
+             
+             // Ensure Quantity is an Integer
+             quantity: Number(f.quantity || 0)
+          }))
         })),
+        // --------------------------------------------------
 
         // Project-approved banks
         projectApprovedBanksInfo: banks.map((bank) => ({
@@ -222,7 +361,7 @@ export default function RegistrationPage() {
           ifsc: bank.ifsc || "",
           accountType: "SAVINGS",
           accountNo: "0000000000",
-          disbursementLetterHead: bank.letterHeadFile || null, // support if uploaded
+          disbursementLetterHead: bank.letterHeadFile || null,
         })),
 
         // Amenities
@@ -248,14 +387,14 @@ export default function RegistrationPage() {
         letterHeadFile: documents.find((d) => d.type === "LetterHead")?.file || null,
       }
 
-      console.log("[v1] Creating project with:", projectData)
+      console.log("[v2-Fix] Creating project with:", projectData)
       const response = await projectService.createProject(projectData)
 
-      console.log("[v1] Project created successfully:", response)
+      console.log("[v2-Fix] Project created successfully:", response)
       success("Project registered successfully!")
       navigate("/projects")
     } catch (err) {
-      console.error("[v1] Error creating project:", err)
+      console.error("[v2-Fix] Error creating project:", err)
       error(err.message || "Failed to create project. Please try again.")
     } finally {
       setIsSubmitting(false)
@@ -330,9 +469,9 @@ export default function RegistrationPage() {
           {currentStep === 1 && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-                <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Wings & Floors</h2>
+                <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Wing Information</h2>
                 <Button
-                  onClick={() => setShowWingModal(true)}
+                  onClick={handleOpenAddWing}
                   variant="primary"
                   size="sm"
                   className="w-full sm:w-auto text-xs sm:text-sm"
@@ -341,28 +480,47 @@ export default function RegistrationPage() {
                   Add Wing
                 </Button>
               </div>
-              {wings.length > 0 ? (
-                <div className="overflow-x-auto -mx-4 md:mx-0">
-                  <div className="inline-block min-w-full px-4 md:px-0">
-                    <Table
-                      columns={[
-                        { key: "wingName", label: "Wing Name" },
-                        { key: "noOfFloors", label: "Floors" },
-                        { key: "noOfProperties", label: "Properties" },
-                      ]}
-                      data={wings}
-                      actions={(row) => [
-                        {
-                          label: "Delete",
-                          onClick: () => setWings(wings.filter((w) => w.wingId !== row.wingId)),
-                        },
-                      ]}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-600 text-center py-8 text-sm md:text-base">No wings added yet</p>
-              )}
+
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <p className="text-sm text-gray-600 mb-2">
+                    Add wing name, no. of floors, and configure property units per floor.
+                </p>
+                {wings.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                                <tr>
+                                    <th className="px-4 py-3 border-b">Wing Name</th>
+                                    <th className="px-4 py-3 border-b">No. Of Floors</th>
+                                    <th className="px-4 py-3 border-b">Total Property</th>
+                                    <th className="px-4 py-3 border-b text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {wings.map((wing, idx) => (
+                                    <tr key={wing.wingId} className="border-b hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-medium">{wing.wingName}</td>
+                                        <td className="px-4 py-3">{wing.noOfFloors}</td>
+                                        <td className="px-4 py-3">{wing.noOfProperties}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            <button 
+                                                onClick={() => handleDeleteWing(wing.wingId)}
+                                                className="text-red-500 hover:text-red-700 p-1"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="text-center py-6 bg-white border border-dashed border-gray-300 rounded-lg">
+                        <p className="text-gray-500">No wings added yet.</p>
+                    </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -605,17 +763,40 @@ export default function RegistrationPage() {
                 </div>
               </div>
 
-              {/* Wings & Floors Section */}
+              {/* Wings & Floors Section (UPDATED REVIEW) */}
               <div className="border rounded-lg p-4 space-y-3">
                 <h3 className="font-semibold text-gray-900 text-lg">Wings & Floors ({wings.length})</h3>
                 {wings.length > 0 ? (
-                  <div className="space-y-2">
-                    {wings.map((wing) => (
-                      <div key={wing.wingId} className="bg-gray-50 p-3 rounded text-sm">
-                        <p className="font-medium text-gray-900">{wing.wingName}</p>
-                        <div className="grid grid-cols-2 gap-2 text-gray-600 mt-1">
-                          <p>Floors: {wing.noOfFloors}</p>
-                          <p>Properties: {wing.noOfProperties}</p>
+                  <div className="space-y-4">
+                    {wings.map((wing, wIdx) => (
+                      <div key={wIdx} className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between">
+                            <h4 className="font-semibold text-gray-800">{wing.wingName}</h4>
+                            <span className="text-sm text-gray-600">{wing.noOfFloors} Floors, {wing.noOfProperties} Units</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs sm:text-sm text-left">
+                                <thead className="bg-white text-gray-500 border-b">
+                                    <tr>
+                                        <th className="px-3 py-2">Floor</th>
+                                        <th className="px-3 py-2">Type</th>
+                                        <th className="px-3 py-2">Property</th>
+                                        <th className="px-3 py-2">Area</th>
+                                        <th className="px-3 py-2">Qty</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {wing.floors.map((f, fIdx) => (
+                                        <tr key={fIdx}>
+                                            <td className="px-3 py-2 font-medium">{f.floorName}</td>
+                                            <td className="px-3 py-2">{f.propertyType}</td>
+                                            <td className="px-3 py-2">{f.property}</td>
+                                            <td className="px-3 py-2">{f.area}</td>
+                                            <td className="px-3 py-2">{f.quantity}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                       </div>
                     ))}
@@ -752,34 +933,187 @@ export default function RegistrationPage() {
         {/* Add padding to prevent content being hidden behind fixed buttons on mobile */}
         <div className="h-16 md:h-0" />
 
-        {/* Modals */}
-        <Modal isOpen={showWingModal} onClose={() => setShowWingModal(false)} title="Add Wing">
-          <FormInput
-            label="Wing Name"
-            value={wingForm.wingName}
-            onChange={(e) => setWingForm({ ...wingForm, wingName: e.target.value })}
-          />
-          <FormInput
-            label="Number of Floors"
-            type="number"
-            value={wingForm.noOfFloors}
-            onChange={(e) => setWingForm({ ...wingForm, noOfFloors: e.target.value })}
-          />
-          <FormInput
-            label="Number of Properties"
-            type="number"
-            value={wingForm.noOfProperties}
-            onChange={(e) => setWingForm({ ...wingForm, noOfProperties: e.target.value })}
-          />
-          <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end mt-4">
+        {/* --- NEW WING MODAL (Size XL for Table) --- */}
+        <Modal 
+            isOpen={showWingModal} 
+            onClose={() => setShowWingModal(false)} 
+            title="Fill Wing Information"
+            size="xl" 
+        >
+          {/* Top Section: Wing Info */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+             <div className="col-span-1">
+                 <FormInput
+                    label="Wing Name"
+                    value={wingForm.wingName}
+                    onChange={(e) => setWingForm({ ...wingForm, wingName: e.target.value })}
+                    placeholder="e.g. Wing C"
+                 />
+             </div>
+             <div className="col-span-1">
+                 <FormInput
+                    label="No. Of Floors"
+                    type="number"
+                    value={wingForm.noOfFloors}
+                    onChange={(e) => setWingForm({ ...wingForm, noOfFloors: e.target.value })}
+                 />
+             </div>
+             <div className="col-span-1 flex items-center pt-6">
+                 <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                        type="checkbox"
+                        checked={wingForm.manualFloorEntry}
+                        onChange={(e) => setWingForm({...wingForm, manualFloorEntry: e.target.checked})}
+                        className="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300"
+                    />
+                    <span className="text-gray-700 font-medium">Manual Floor Entry</span>
+                 </label>
+             </div>
+          </div>
+
+          <hr className="my-4 border-gray-200"/>
+
+          {/* Middle Section: Add Floor Row Inputs */}
+          <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
+                 <div className="col-span-2 md:col-span-2">
+                     <label className="block text-xs font-medium text-gray-700 mb-1">Floor No/Name</label>
+                     <input 
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none"
+                        value={floorInput.floorName}
+                        onChange={(e) => setFloorInput({...floorInput, floorName: e.target.value})}
+                        placeholder="Ground"
+                     />
+                 </div>
+                 <div className="col-span-2 md:col-span-2">
+                     <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                     <select 
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none bg-white"
+                        value={floorInput.propertyType}
+                        onChange={(e) => setFloorInput({...floorInput, propertyType: e.target.value})}
+                     >
+                         <option value="">Choose...</option>
+                         <option value="Residential">Residential</option>
+                         <option value="Commercial">Commercial</option>
+                         <option value="Industrial">Industrial</option>
+                     </select>
+                 </div>
+                 <div className="col-span-2 md:col-span-3">
+                     <label className="block text-xs font-medium text-gray-700 mb-1">Property</label>
+                     <select 
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none bg-white"
+                        value={floorInput.property}
+                        onChange={(e) => setFloorInput({...floorInput, property: e.target.value})}
+                     >
+                         <option value="">Choose...</option>
+                         <option value="1 BHK">1 BHK</option>
+                         <option value="2 BHK">2 BHK</option>
+                         <option value="3 BHK">3 BHK</option>
+                         <option value="4 BHK">4 BHK</option>
+                         <option value="Offices">Offices</option>
+                         <option value="Shops">Shops</option>
+                     </select>
+                 </div>
+                 <div className="col-span-1 md:col-span-2">
+                     <label className="block text-xs font-medium text-gray-700 mb-1">Area</label>
+                     <input 
+                        type="number"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none"
+                        value={floorInput.area}
+                        onChange={(e) => setFloorInput({...floorInput, area: e.target.value})}
+                        placeholder="Area"
+                     />
+                 </div>
+                 <div className="col-span-1 md:col-span-2">
+                     <label className="block text-xs font-medium text-gray-700 mb-1">Qty</label>
+                     <input 
+                        type="number"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none"
+                        value={floorInput.quantity}
+                        onChange={(e) => setFloorInput({...floorInput, quantity: e.target.value})}
+                        placeholder="Qty"
+                     />
+                 </div>
+                 <div className="col-span-2 md:col-span-1">
+                     <Button 
+                        onClick={handleAddOrUpdateFloorRow} 
+                        size="sm" 
+                        variant="primary" 
+                        className="w-full h-[34px] flex items-center justify-center"
+                     >
+                         {editingFloorIndex >= 0 ? <Save size={16}/> : <Plus size={16} />}
+                     </Button>
+                 </div>
+              </div>
+          </div>
+
+          {/* Bottom Section: Table of Floors */}
+          <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
+             <table className="w-full text-sm text-left border-collapse">
+                 <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
+                     <tr>
+                         <th className="px-3 py-2 border-b text-center w-12">SN</th>
+                         <th className="px-3 py-2 border-b">Floor Name</th>
+                         <th className="px-3 py-2 border-b">Property Type</th>
+                         <th className="px-3 py-2 border-b">Property</th>
+                         <th className="px-3 py-2 border-b">Area</th>
+                         <th className="px-3 py-2 border-b text-center">Quantity</th>
+                         <th className="px-3 py-2 border-b text-center">Action</th>
+                     </tr>
+                 </thead>
+                 <tbody className="divide-y divide-gray-100">
+                     {currentWingFloors.map((floor, index) => (
+                         <tr key={index} className="hover:bg-gray-50">
+                             <td className="px-3 py-2 text-center text-gray-500">{index + 1}</td>
+                             <td className="px-3 py-2">{floor.floorName}</td>
+                             <td className="px-3 py-2">{floor.propertyType}</td>
+                             <td className="px-3 py-2">{floor.property}</td>
+                             <td className="px-3 py-2">{floor.area}</td>
+                             <td className="px-3 py-2 text-center">{floor.quantity}</td>
+                             <td className="px-3 py-2 flex justify-center gap-2">
+                                 <button 
+                                    onClick={() => handleEditFloorRow(index)}
+                                    className="text-green-600 hover:text-green-800 p-1"
+                                 >
+                                     <Edit size={16} />
+                                 </button>
+                                 <button 
+                                    onClick={() => handleDeleteFloorRow(index)}
+                                    className="text-red-500 hover:text-red-700 p-1"
+                                 >
+                                     <Trash2 size={16} />
+                                 </button>
+                             </td>
+                         </tr>
+                     ))}
+                     {currentWingFloors.length === 0 && (
+                         <tr>
+                             <td colSpan="7" className="text-center py-4 text-gray-500 text-xs">
+                                 No floors added yet. Enter number of floors to auto-generate or add manually.
+                             </td>
+                         </tr>
+                     )}
+                 </tbody>
+             </table>
+          </div>
+
+          <div className="flex items-center gap-2 mt-4 bg-gray-100 p-2 rounded text-sm text-gray-700 font-medium">
+             <span>Total Properties: </span>
+             <span>
+                {currentWingFloors.reduce((sum, f) => sum + (parseInt(f.quantity) || 0), 0)}
+             </span>
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end mt-6">
             <Button onClick={() => setShowWingModal(false)} variant="secondary" className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button onClick={handleAddWing} variant="primary" className="w-full sm:w-auto">
-              Add Wing
+            <Button onClick={handleSaveWing} variant="primary" className="w-full sm:w-auto">
+              <Plus size={18} className="mr-1"/> Add Wing
             </Button>
           </div>
         </Modal>
+        {/* --- END WING MODAL --- */}
 
         <Modal isOpen={showBankModal} onClose={() => setShowBankModal(false)} title="Add Bank">
           <FormInput

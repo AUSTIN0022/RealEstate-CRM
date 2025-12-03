@@ -3,7 +3,7 @@ import { apiClient } from "./apiClient"
 export const authService = {
   async login(username, password) {
     try {
-      const response = await fetch("https://realestate.ysminfosolution.com/api/login", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

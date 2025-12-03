@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
       if (refreshToken) {
         try {
           console.log("[Auth] Attempting silent token refresh...")
-          const response = await fetch("https://realestate.ysminfosolution.com/api/refresh", {
+          const response = await fetch(`${VITE_API_URL}/refresh`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ refreshToken }),
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }) => {
       apiClient.setTokens(result.accessToken, result.refreshToken)
       return userData
     } catch (error) {
-      console.error("[v0] Login failed:", error)
+      console.error("Login failed:", error)
       throw error
     }
   }

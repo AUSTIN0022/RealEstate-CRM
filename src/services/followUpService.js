@@ -5,10 +5,10 @@ export const followUpService = {
   async getAllFollowUps() {
     try {
       const response = await apiClient.request("/followUps")
-      console.log("[v0] All follow-ups fetched")
+      console.log("All follow-ups fetched")
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch follow-ups:", error)
+      console.error("Failed to fetch follow-ups:", error)
       throw error
     }
   },
@@ -17,10 +17,10 @@ export const followUpService = {
   async getFollowUpsBasicInfo() {
     try {
       const response = await apiClient.request("/followUps/basicinfolist")
-      console.log("[v0] Follow-ups basic info fetched")
+      console.log("Follow-ups basic info fetched")
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch follow-ups basic info:", error)
+      console.error("Failed to fetch follow-ups basic info:", error)
       throw error
     }
   },
@@ -29,10 +29,10 @@ export const followUpService = {
   async getProjectFollowUps(projectId) {
     try {
       const response = await apiClient.request(`/followUps/project/${projectId}`)
-      console.log("[v0] Project follow-ups fetched:", projectId)
+      console.log("Project follow-ups fetched:", projectId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch project follow-ups:", error)
+      console.error("Failed to fetch project follow-ups:", error)
       throw error
     }
   },
@@ -41,10 +41,10 @@ export const followUpService = {
   async getEnquiryFollowUps(enquiryId) {
     try {
       const response = await apiClient.request(`/followUps/enquiry/${enquiryId}`)
-      console.log("[v0] Enquiry follow-ups fetched:", enquiryId)
+      console.log("Enquiry follow-ups fetched:", enquiryId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch enquiry follow-ups:", error)
+      console.error("Failed to fetch enquiry follow-ups:", error)
       throw error
     }
   },
@@ -53,10 +53,10 @@ export const followUpService = {
   async getFollowUpById(followUpId) {
     try {
       const response = await apiClient.request(`/followUps/${followUpId}`)
-      console.log("[v0] Follow-up fetched:", followUpId)
+      console.log("Follow-up fetched:", followUpId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch follow-up:", error)
+      console.error("Failed to fetch follow-up:", error)
       throw error
     }
   },
@@ -69,10 +69,10 @@ export const followUpService = {
         endpoint += `?fromDate=${fromDate}&toDate=${toDate}`
       }
       const response = await apiClient.request(endpoint)
-      console.log("[v0] Follow-up tasks fetched")
+      console.log("Follow-up tasks fetched")
       return response
     } catch (error) {
-      console.error("[v0] Failed to fetch follow-up tasks:", error)
+      console.error("Failed to fetch follow-up tasks:", error)
       throw error
     }
   },
@@ -89,10 +89,10 @@ export const followUpService = {
         }),
       })
 
-      console.log("[v0] Follow-up node added:", followUpId)
+      console.log("Follow-up node added:", followUpId)
       return response
     } catch (error) {
-      console.error("[v0] Failed to add follow-up node:", error)
+      console.error("Failed to add follow-up node:", error)
       throw error
     }
   },
