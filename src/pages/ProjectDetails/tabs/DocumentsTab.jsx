@@ -49,26 +49,40 @@ export default function DocumentsTab({ documents, projectId, onRefresh }) {
 
   const handlePreviewDocument = async (doc) => {
     try {
-      const fileUrl = `${import.meta.env.VITE_API_URL}/documents/${
-        doc.id || doc.documentId
-      }`
-      const fileType = doc.fileName?.split(".").pop()?.toLowerCase() || "pdf"
+      // 1. Get the Signed URL from backend
+      const signedUrl = await projectService.getDocumentSignedUrl(doc.documentURL)
+      
+      // 2. Determine file type from the documentURL extension
+      const fileType = doc.documentURL?.split(".").pop()?.split("?")[0]?.toLowerCase() || "pdf"
 
       setPreviewModal({
         isOpen: true,
         doc: doc,
-        fileUrl: fileUrl,
+        fileUrl: signedUrl,
         fileType: fileType,
       })
     } catch (err) {
+      console.error(err)
       toastError("Failed to load preview")
     }
   }
 
   const handleDownloadDocument = async (doc) => {
     try {
-      const path = doc.filePath || doc.path || `documents/${doc.id}`
-      await projectService.downloadDocument(path)
+      // 1. Get the Signed URL
+      const signedUrl = await projectService.getDocumentSignedUrl(doc.documentURL)
+      
+      // 2. Open in new tab (S3 Signed URLs trigger browser download/view behavior)
+      const link = document.createElement('a')
+      link.href = signedUrl
+      link.target = "_blank"
+      link.rel = "noopener noreferrer"
+      // Note: 'download' attribute often ignored for cross-origin (S3) links
+      link.download = doc.documentTitle || "document"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
     } catch (e) {
       toastError("Download failed")
     }
@@ -152,7 +166,7 @@ export default function DocumentsTab({ documents, projectId, onRefresh }) {
           <tbody className="bg-white divide-y divide-gray-200">
             {documents && documents.length > 0 ? (
               documents.map((doc, idx) => (
-                <tr key={doc.id || idx}>
+                <tr key={doc.documentId || idx}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 flex items-center gap-2">
                     <FileText size={16} className="text-blue-500" /> {doc.documentType}
                   </td>
@@ -173,7 +187,7 @@ export default function DocumentsTab({ documents, projectId, onRefresh }) {
                       <Download size={18} />
                     </button>
                     <button
-                      onClick={() => handleDeleteDocument(doc.id)}
+                      onClick={() => handleDeleteDocument(doc.documentId)}
                       className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
                       title="Delete"
                     >

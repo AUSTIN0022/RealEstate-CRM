@@ -270,7 +270,7 @@ export const Modal = ({
       </div>
 
       {/* Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

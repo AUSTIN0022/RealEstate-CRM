@@ -224,7 +224,8 @@ export const projectService = {
 
     const token = apiClient.getAuthToken()
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${projectId}`, {
+    // Matches your working curl: /api/documents/{projectId}
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/documents/${projectId}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -245,32 +246,38 @@ export const projectService = {
     })
   },
 
-  async downloadDocument(downloadPath) {
+  // --- Fixed Download/Preview Method ---
+  async getDocumentSignedUrl(documentUrlPath) {
     try {
-      const cleanPath = downloadPath.startsWith("/") ? downloadPath : `/${downloadPath}`
-      const token = localStorage.getItem("token")
-      const baseUrl = import.meta.env.VITE_API_URL
+      const token = apiClient.getAuthToken()
+      
+      // 1. Remove leading slash if present
+      const cleanPath = documentUrlPath.startsWith("/") ? documentUrlPath.slice(1) : documentUrlPath
+      
+      // 2. Use encodeURI, NOT encodeURIComponent. 
+      // This preserves the '/' structure (e.g. "Folder/File.pdf") while encoding spaces (e.g. "Rainbow%203").
+      const formattedPath = encodeURI(cleanPath)
 
-      const response = await fetch(`${baseUrl}${cleanPath}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // 3. CORRECTED ENDPOINT: /documents/download/
+      // Matches your working curl: {{base_url}}/documents/download/{{path}}
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/documents/download/${formattedPath}`, {
+         method: "GET",
+         headers: {
+            Authorization: `Bearer ${token}`,
+         }
       })
 
-      if (!response.ok) throw new Error("Download failed")
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      const fileName = cleanPath.split("/").pop() || "document"
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      if (!response.ok) {
+        // Log detailed error for debugging
+        const errorText = await response.text()
+        console.error("API Error:", response.status, errorText)
+        throw new Error(`Server responded with ${response.status}`)
+      }
+      
+      const signedUrl = await response.text()
+      return signedUrl
     } catch (error) {
-      console.error("Download error:", error)
+      console.error("Signed URL error:", error)
       throw error
     }
   },
