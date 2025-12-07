@@ -11,11 +11,11 @@ import { Card } from "../components/ui/Card"
 import { Tabs } from "../components/ui/Tabs"
 import { Table } from "../components/ui/Table"
 import { Button } from "../components/ui/Button"
-import { Drawer } from "../components/ui/Drawer"
+// Removed Drawer
 import { Timeline } from "../components/ui/Timeline"
 import { SkeletonLoader } from "../components/ui/SkeletonLoader"
 import { useToast } from "../components/ui/Toast"
-import { Modal } from "../components/ui/Modal"
+import { Modal, TwoColumnModal, ModalSection } from "../components/ui/Modal" // Added TwoColumnModal, ModalSection
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
 import { FormTextarea } from "../components/ui/FormTextarea"
@@ -52,8 +52,8 @@ export default function ClientProfilePage() {
   const [loadingClient, setLoadingClient] = useState(true)
   const [loadingTimeline, setLoadingTimeline] = useState(false)
   
-  // --- Timeline Drawer State ---
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  // --- Timeline Modal State (Replaced Drawer State) ---
+  const [showTimelineModal, setShowTimelineModal] = useState(false)
   const [targetFollowUpId, setTargetFollowUpId] = useState("")
   const [submittingNode, setSubmittingNode] = useState(false)
   
@@ -124,11 +124,11 @@ export default function ClientProfilePage() {
         try {
           const data = await followUpService.getEnquiryFollowUps(enq.enquiryId)
           if (data && data.followUpId) {
-            // Merge project name and client details from API response for the drawer
+            // Merge project name and client details from API response for the drawer/modal
             return { 
               ...data, 
               projectName: enq.projectName,
-              // Ensure clientName/mobile are available for the Drawer header
+              // Ensure clientName/mobile are available for the header
               clientName: data.clientName || client.clientName, 
               mobileNumber: data.mobileNumber || client.mobileNumber
             } 
@@ -158,7 +158,7 @@ export default function ClientProfilePage() {
     if (enquiries.length > 0) fetchTimelineData()
   }, [enquiries])
 
-  // Get currently selected thread object for the Drawer UI
+  // Get currently selected thread object for the UI
   const selectedFollowUp = useMemo(() => {
     return followUpThreads.find(t => t.followUpId === targetFollowUpId) || null
   }, [followUpThreads, targetFollowUpId])
@@ -186,9 +186,9 @@ export default function ClientProfilePage() {
 
   // --- 4. Handlers ---
 
-  const handleOpenDrawer = () => {
+  const handleOpenTimeline = () => { // Renamed from handleOpenDrawer
     fetchTimelineData()
-    setIsDrawerOpen(true)
+    setShowTimelineModal(true) // Updated state variable
   }
 
   const handleAddNote = async () => {
@@ -304,9 +304,22 @@ export default function ClientProfilePage() {
           rawDate: dateObj
         }
     })
-    // Sort Newest First (b - a) as per standard UI, or use reverse() if that matches your preference
+    // Sort Newest First (b - a)
     return events.sort((a, b) => b.rawDate - a.rawDate)
   }, [selectedFollowUp])
+  
+  const scrollToAddNote = () => {
+    const element = document.getElementById('add-note-section');
+    if (element) element.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  const formatDate = (dateString) => {
+     if (!dateString) return "Not Scheduled";
+     // Ensure consistent date formatting across the file
+     return new Date(dateString).toLocaleDateString('en-GB', {
+       day: 'numeric', month: 'short', year: 'numeric'
+     });
+  };
 
 
   if (loadingClient) {
@@ -348,21 +361,7 @@ export default function ClientProfilePage() {
             </Card>
           </div>
           
-          <div className="space-y-6">
-            <Card className="p-6 bg-gray-50 border-none">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Summary</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                  <span className="text-gray-600">Total Enquiries</span>
-                  <span className="font-bold text-gray-900">{enquiries.length}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                  <span className="text-gray-600">Active Bookings</span>
-                  <span className="font-bold text-gray-900">{bookings.length}</span>
-                </div>
-              </div>
-            </Card>
-          </div>
+          
         </div>
       ),
     },
@@ -433,7 +432,7 @@ export default function ClientProfilePage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={handleOpenDrawer} className="flex items-center gap-2">
+            <Button onClick={handleOpenTimeline} className="flex items-center gap-2">
               <History size={16} /> View Timeline
             </Button>
             <Button variant="outline" className="flex items-center gap-2" onClick={openNewEnquiryModal}>
@@ -548,131 +547,123 @@ export default function ClientProfilePage() {
           }
       />
 
-      {/* --- Timeline Drawer (Redesigned) --- */}
-      <Drawer 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
-        title="Follow-Up Timeline"
-        width="w-[600px]"
-      >
-        <div className="flex flex-col h-full bg-white">
-          
-          {/* 1. Context Selector (If multiple enquiries exist) */}
-          {followUpThreads.length > 1 && (
-            <div className="px-6 pt-4">
-                <label className="text-xs text-gray-500 font-medium mb-1 block">Select Enquiry Context</label>
-                <select 
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={targetFollowUpId}
-                  onChange={(e) => setTargetFollowUpId(e.target.value)}
-                >
-                  {followUpThreads.map(t => (
-                    <option key={t.followUpId} value={t.followUpId}>
-                      {t.projectName || `Enquiry ${t.enquiryId.substr(0,8)}...`}
-                    </option>
-                  ))}
-                </select>
-            </div>
-          )}
-
-          {/* 2. Content Body */}
-          {selectedFollowUp ? (
-            <div className="flex-1 flex flex-col min-h-0">
-               
-               {/* Client Summary Card (Ref: LeftContent Top) */}
-               <div className="px-6 py-4">
-                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
-                    <div>
-                      <p className="text-md font-bold text-gray-900">{selectedFollowUp.clientName}</p>
-                      <p className="text-xs text-gray-500">{selectedFollowUp.projectName}</p>
+      {/* --- Timeline Modal (Replaces Drawer) --- */}
+      <TwoColumnModal
+          isOpen={showTimelineModal}
+          onClose={() => setShowTimelineModal(false)}
+          title="Follow-Up Timeline"
+          columnGap="lg"
+          leftContent={
+            selectedFollowUp && (
+              <div className="flex flex-col h-full">
+                
+                {/* 1. Grouping Div for Context Selector and Client Details */}
+                <div className="flex flex-col"> 
+                  {/* Context Selector (Preserved) */}
+                  {followUpThreads.length > 1 && (
+                    <div className="mb-4">
+                      <label className="text-xs text-gray-500 font-medium mb-1 block">Select Enquiry Context</label>
+                      <select 
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={targetFollowUpId}
+                        onChange={(e) => setTargetFollowUpId(e.target.value)}
+                      >
+                        {followUpThreads.map(t => (
+                          <option key={t.followUpId} value={t.followUpId}>
+                            {t.projectName || `Enquiry ${t.enquiryId.substr(0,8)}...`}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Phone size={14} className="text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">{selectedFollowUp.mobileNumber}</span>
-                    </div>
-                 </div>
-               </div>
-
-               {/* Scrollable Timeline (Ref: LeftContent Body) */}
-               <div className="flex-1 overflow-y-auto px-6 mb-4">
-                  <div className="flex items-center gap-2 mb-4 sticky top-0 bg-white z-10 py-2 border-b border-gray-100">
-                      <Calendar size={18} className="text-purple-600" />
-                      <h3 className="font-semibold text-gray-900 text-sm">Activity Timeline</h3>
-                  </div>
-                  {timelineEvents.length > 0 ? (
-                    <Timeline events={timelineEvents} />
-                  ) : (
-                    <div className="text-center py-10 text-gray-400 text-sm">No history available.</div>
                   )}
-               </div>
-
-               {/* Follow Up Details & Add Form */}
-               <div className="px-6 py-6 bg-gray-50  border-gray-200 rounded-xl">
                   
-                  {/* Next Follow Up Display */}
-                  <div className="flex items-center justify-between mb-6">
-                     <div className="flex items-center gap-2">
-                        <Calendar size={18} className="text-indigo-600" />
-                        <span className="font-semibold text-gray-900 text-sm">Next Follow-Up</span>
-                     </div>
-                     <span className="text-sm font-medium text-gray-700">
-                        {selectedFollowUp.followUpNextDate 
-                          ? new Date(selectedFollowUp.followUpNextDate).toLocaleDateString() 
-                          : "Not Scheduled"}
-                     </span>
-                  </div>
-
-                  {/* Add Note Form */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                        <FileText size={18} className="text-green-600" />
-                        <h3 className="font-semibold text-gray-900 text-sm">Add New Note</h3>
-                    </div>
+                  {/* Client Details Card (Top Card) */}
+                  <div className="mb-1 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 flex items-center justify-between">
+                      <div>
+                        <p className="text-md font-bold text-gray-900">{selectedFollowUp.clientName}</p>
                     
-                    <div className="space-y-3">
-                       <FormInput
-                          required={true}
-                          placeholder="Enter your note..."
-                          value={nodeForm.body}
-                          onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
-                       />
-                       
-                       <div className="grid grid-cols-2 gap-3">
-                          <FormSelect
-                            label="Event Tag"
-                            value={nodeForm.eventTag}
-                            onChange={(e) => setNodeForm({ ...nodeForm, eventTag: e.target.value })}
-                            options={Object.values(FOLLOWUP_EVENT_TAGS).map(tag => ({ value: tag, label: tag }))}
-                          />
-                          <FormInput
-                            required={true}
-                            type="datetime-local"
-                            label="Next Follow Up"
-                            value={nodeForm.followUpDateTime}
-                            onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
-                          />
-                       </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <Phone size={14} className="text-gray-400" />
+                          <span className="text-sm font-medium text-gray-700">{selectedFollowUp.mobileNumber}</span>
+                      </div>
+                  </div>
+                  
+                </div>
 
-                       <Button 
-                          onClick={handleAddNote} 
-                          className="w-full justify-center"
-                          disabled={submittingNode}
-                       >
-                          {submittingNode ? "Saving..." : "Add Note"}
-                       </Button>
+                {/* 2. Scrollable Timeline Body */}
+                <div className="flex-1 overflow-y-auto pr-2 max-h-[calc(90vh-350px)]">
+                  <div className="flex items-center justify-between mb-4 sticky top-0 bg-white z-20 py-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={20} className="text-purple-600" />
+                      <h3 className="font-semibold text-gray-900">Activity Timeline</h3>
                     </div>
+                    {/* Plus Button for Mobile Scrolling */}
+                    <button
+                      onClick={scrollToAddNote}
+                      className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-colors"
+                      aria-label="Add Note"
+                    >
+                      <Plus size={18} />
+                    </button>
                   </div>
 
-               </div>
+                  <Timeline events={timelineEvents} />
+                </div>
+              </div>
+            )
+          }
+          rightContent={
+            selectedFollowUp && (
+              <div className="space-y-6 px-2 overflow-y-auto max-h-[calc(90vh-200px)]">
+                
+                <ModalSection title="Follow-Up Details" icon={Calendar} iconColor="text-indigo-600">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm md:text-md text-gray-600 mb-1">Follow-Up Date</p>
+                      <p className="text-sm md:text-base font-semibold text-gray-900">
+                        {formatDate(selectedFollowUp.followUpNextDate)}
+                      </p>
+                    </div>
+                  </div>
+                </ModalSection>
 
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-               {loadingTimeline ? <SkeletonLoader count={3} /> : "No Enquiry Selected"}
-            </div>
-          )}
-        </div>
-      </Drawer>
+                {/* Add Note Section with ID for scrolling */}
+                <div id="add-note-section">
+                  <ModalSection title="Add New Note" icon={FileText} iconColor="text-green-600">
+                    <div className="space-y-3">
+                      <FormInput
+                        value={nodeForm.body}
+                        onChange={(e) => setNodeForm({ ...nodeForm, body: e.target.value })}
+                        placeholder="Enter your note..."
+                      />
+                      <FormSelect
+                        label="Event Tag"
+                        value={nodeForm.eventTag}
+                        onChange={(e) => setNodeForm({ ...nodeForm, eventTag: e.target.value })}
+                        options={Object.values(FOLLOWUP_EVENT_TAGS).map(tag => ({
+                          value: tag,
+                          label: tag,
+                        }))}
+                        required
+                      />
+                      <FormInput
+                        type="datetime-local"
+                        label="Next Follow Up Date (optional)"
+                        value={nodeForm.followUpDateTime}
+                        onChange={(e) => setNodeForm({ ...nodeForm, followUpDateTime: e.target.value })}
+                      />
+
+                      <Button onClick={handleAddNote} disabled={submittingNode} className="w-full justify-center">
+                        {submittingNode ? "Saving..." : "Add Note"}
+                      </Button>
+                    </div>
+                  </ModalSection>
+                </div>
+              </div>
+            )
+          }
+      />
     </AppLayout>
   )
 }

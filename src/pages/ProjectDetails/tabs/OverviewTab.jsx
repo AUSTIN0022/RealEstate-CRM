@@ -21,6 +21,8 @@ export default function OverviewTab({ project, onUpdate }) {
   })
 
   const handleUpdateBasicInfo = async () => {
+    console.log(`id: ${project.id} | _id: ${project._id}`);
+    console.log("Updating basic info with:", basicForm)
     try {
       // Assuming projectId is available inside the project object
       await projectService.updateProject(project.id || project._id, basicForm)

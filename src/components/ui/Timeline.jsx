@@ -53,15 +53,15 @@ export const Timeline = ({ events }) => {
                 </div>
 
                 <div className="flex-1 pb-2">
-                  <divs
-                    className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold border ${getTagColor(
-                      event.title,
-                    )}`}
-                  >
-                    {event.title}
-                  </divs>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <p className="text-xs text-gray-500">{event.timestamp}</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span
+                      className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold border ${getTagColor(
+                        event.title,
+                      )}`}
+                    >
+                      {event.title}
+                    </span>
+                    <span className="text-xs text-gray-500">{event.timestamp}</span>
                     {event.agent && (
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                         by {event.agent}
