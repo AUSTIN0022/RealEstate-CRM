@@ -46,10 +46,16 @@ export function useRegistrationForm() {
   })
   const [editingFloorIndex, setEditingFloorIndex] = useState(-1)
 
-  // Step 3: Bank Info
+  // Step 3: Bank Info (Updated with Account fields)
   const [banks, setBanks] = useState([])
   const [bankForm, setBankForm] = useState({
-    bankName: "", branchName: "", contactPerson: "", contactNumber: "", ifsc: "",
+    bankName: "", 
+    branchName: "", 
+    contactPerson: "", 
+    contactNumber: "", 
+    ifsc: "",
+    accountNo: "",          // Added
+    accountType: "SAVINGS"  // Added
   })
 
   // Step 4: Amenities & Documents
@@ -96,15 +102,13 @@ export function useRegistrationForm() {
     setShowWingModal(true)
   }
 
-  // --- NEW: Handle Edit Wing ---
   const handleEditWing = (wing) => {
     setWingForm({
         wingId: wing.wingId,
         wingName: wing.wingName,
         noOfFloors: wing.noOfFloors,
-        manualFloorEntry: true // Set true to show the floors table immediately
+        manualFloorEntry: true 
     })
-    // Deep copy to ensure we don't mutate state directly until save
     setCurrentWingFloors(JSON.parse(JSON.stringify(wing.floors)))
     setShowWingModal(true)
   }
@@ -147,7 +151,6 @@ export function useRegistrationForm() {
     }
   }
 
-  // --- UPDATED: Handle Save Wing (Add or Update) ---
   const handleSaveWing = () => {
     if (!wingForm.wingName) {
       error("Wing Name is required")
@@ -168,11 +171,9 @@ export function useRegistrationForm() {
     }
 
     if (wingForm.wingId) {
-        // Update existing wing
         setWings(wings.map(w => w.wingId === wingForm.wingId ? wingData : w))
         success("Wing updated successfully")
     } else {
-        // Add new wing
         setWings([...wings, wingData])
         success("Wing saved successfully")
     }
@@ -209,12 +210,15 @@ export function useRegistrationForm() {
   // --- OTHER HANDLERS ---
 
   const handleAddBank = () => {
-    if (!bankForm.bankName || !bankForm.branchName || !bankForm.contactPerson || !bankForm.contactNumber) {
+    if (!bankForm.bankName || !bankForm.branchName || !bankForm.contactPerson || !bankForm.contactNumber || !bankForm.accountNo) {
       error("Please fill all bank fields")
       return
     }
     setBanks([...banks, { ...bankForm, bankDetailId: uuidv4() }])
-    setBankForm({ bankName: "", branchName: "", contactPerson: "", contactNumber: "", ifsc: "" })
+    setBankForm({ 
+        bankName: "", branchName: "", contactPerson: "", 
+        contactNumber: "", ifsc: "", accountNo: "", accountType: "SAVINGS" 
+    })
     setShowBankModal(false)
     success("Bank added successfully")
   }
@@ -258,6 +262,10 @@ export function useRegistrationForm() {
     if (wings.length === 0) { error("Please add at least one wing"); return }
     if (banks.length === 0) { error("Please add at least one bank"); return }
 
+    // --- FIX: Reuse the Main LetterHead for Disbursement Banks ---
+    const mainLetterHeadDoc = documents.find((d) => d.type === "LetterHead")
+    const mainLetterHeadFile = mainLetterHeadDoc ? mainLetterHeadDoc.file : null
+
     setIsSubmitting(true)
     try {
       const projectData = {
@@ -288,15 +296,18 @@ export function useRegistrationForm() {
           contactPerson: bank.contactPerson,
           contactNumber: bank.contactNumber,
         })),
+        
+        // --- Mapped Correctly with Hardcoded File ---
         disbursementBanksDetail: banks.map((bank) => ({
           accountName: bank.bankName,
           bankName: bank.bankName,
           branchName: bank.branchName,
           ifsc: bank.ifsc || "",
-          accountType: "SAVINGS",
-          accountNo: "0000000000",
-          disbursementLetterHead: bank.letterHeadFile || null,
+          accountType: bank.accountType || "SAVINGS",
+          accountNo: bank.accountNo || "0000000000",
+          disbursementLetterHead: mainLetterHeadFile, // <--- REUSING MAIN FILE
         })),
+        
         amenities: amenities.map((a) => ({ amenityName: a })),
         documents: documents.map((doc) => ({
           documentType: doc.type,
@@ -308,7 +319,7 @@ export function useRegistrationForm() {
           description: d.description || "",
           percentage: Number.parseFloat(d.percentage),
         })),
-        letterHeadFile: documents.find((d) => d.type === "LetterHead")?.file || null,
+        letterHeadFile: mainLetterHeadFile,
       }
 
       await projectService.createProject(projectData)
@@ -330,7 +341,7 @@ export function useRegistrationForm() {
     basicInfo, setBasicInfo,
 
     // Wings
-    wings, handleOpenAddWing, handleDeleteWing, handleEditWing, // Exported handleEditWing
+    wings, handleOpenAddWing, handleDeleteWing, handleEditWing,
     showWingModal, setShowWingModal, handleSaveWing,
     wingForm, setWingForm, currentWingFloors, 
     floorInput, setFloorInput, editingFloorIndex,

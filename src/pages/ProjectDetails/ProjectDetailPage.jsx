@@ -105,7 +105,7 @@ export default function ProjectDetailPage() {
   const tabs = [
     {
       label: "Overview",
-      content: <OverviewTab project={project} onUpdate={fetchData} />,
+      content: <OverviewTab project={project} projectId={projectId} onUpdate={fetchData} />,
     },
     {
       label: "Wings",

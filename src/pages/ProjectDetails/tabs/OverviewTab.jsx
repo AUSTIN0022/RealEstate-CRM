@@ -7,7 +7,7 @@ import { Edit } from "lucide-react"
 import { formatDate } from "../../../utils/helpers"
 import { projectService } from "../../../services/projectService"
 
-export default function OverviewTab({ project, onUpdate }) {
+export default function OverviewTab({ project, projectId, onUpdate }) {
   const { success, error: toastError } = useToast()
   const [isEditingBasic, setIsEditingBasic] = useState(false)
   
@@ -21,11 +21,13 @@ export default function OverviewTab({ project, onUpdate }) {
   })
 
   const handleUpdateBasicInfo = async () => {
-    console.log(`id: ${project.id} | _id: ${project._id}`);
+    const idToUse = projectId || project.id || project._id;
+    
+    console.log(`Updating project ID: ${idToUse}`, basicForm);
     console.log("Updating basic info with:", basicForm)
     try {
-      // Assuming projectId is available inside the project object
-      await projectService.updateProject(project.id || project._id, basicForm)
+      
+      await projectService.updateProject(idToUse, basicForm)
       success("Project info updated")
       setIsEditingBasic(false)
       if (onUpdate) onUpdate()

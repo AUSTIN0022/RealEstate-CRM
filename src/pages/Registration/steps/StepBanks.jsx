@@ -18,6 +18,8 @@ export default function StepBanks({ banks, setBanks, onOpenModal }) {
               columns={[
                 { key: "bankName", label: "Bank Name" },
                 { key: "branchName", label: "Branch" },
+                { key: "accountNo", label: "Account No" }, // Added
+                { key: "accountType", label: "Type" },     // Added
                 { key: "contactPerson", label: "Contact Person" },
                 { key: "contactNumber", label: "Contact Number" },
               ]}
