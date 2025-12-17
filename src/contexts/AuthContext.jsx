@@ -1,14 +1,14 @@
 import React, { createContext, useState, useEffect } from "react"
 import { authService } from "../services/authService"
 import { apiClient } from "../services/apiClient"
-import { useToast } from "../components/ui/Toast" // import toast hook
+import { useToast } from "../components/ui/Toast"
 
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const { error } = useToast() // for session expiry message
+  const { error } = useToast()
 
   // 1. Load stored user from localStorage
   useEffect(() => {
@@ -17,6 +17,11 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(storedAuth)
         setUser(parsed)
+        
+        // --- ADDED: Sync apiClient immediately on load ---
+        if (parsed.accessToken && parsed.refreshToken) {
+           apiClient.setTokens(parsed.accessToken, parsed.refreshToken)
+        }
       } catch (e) {
         console.error("Failed to parse auth:", e)
       }
@@ -24,49 +29,18 @@ export const AuthProvider = ({ children }) => {
     setLoading(false)
   }, [])
 
-  // 2. Auto-refresh token every 10 minutes
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const refreshToken = apiClient.getRefreshToken()
-      if (refreshToken) {
-        try {
-          console.log("[Auth] Attempting silent token refresh...")
-          const response = await fetch(`${VITE_API_URL}/refresh`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refreshToken }),
-          })
+  // --- REMOVED: The 10-minute auto-refresh interval is gone. ---
+  // The app will now rely on apiClient to catch 401 errors and refresh on demand.
 
-          if (response.ok) {
-            const data = await response.json()
-            // update user + apiClient
-            const updatedUser = { ...user, accessToken: data.accessToken, refreshToken: data.refreshToken }
-            setUser(updatedUser)
-            localStorage.setItem("propease_auth", JSON.stringify(updatedUser))
-            apiClient.setTokens(data.accessToken, data.refreshToken)
-            console.log("[Auth] Token refreshed successfully ✅")
-          } else {
-            console.warn("[Auth] Token refresh failed — logging out...")
-            handleSessionExpired()
-          }
-        } catch (err) {
-          console.error("[Auth] Error refreshing token:", err)
-          handleSessionExpired()
-        }
-      }
-    }, 10 * 60 * 1000) // every 10 minutes
-
-    return () => clearInterval(interval)
-  }, [user])
-
-  // 3. Handle session expiry cleanly
+  // 2. Handle session expiry cleanly
+  // This is passed to apiClient (if you link them) or used internally
   const handleSessionExpired = () => {
     logout()
     error("Your session has expired. Please log in again.")
     window.location.href = "/login"
   }
 
-  // 4. Login
+  // 3. Login
   const login = async (username, password) => {
     try {
       const result = await authService.login(username, password)
@@ -91,11 +65,12 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  //  5. Logout
+  // 4. Logout
   const logout = () => {
     authService.logout()
     setUser(null)
     localStorage.removeItem("propease_auth")
+    apiClient.clearTokens() // Ensure apiClient is cleared too
   }
 
   return (
@@ -104,7 +79,6 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   )
 }
-
 
 export const useAuth = () => {
   const context = React.useContext(AuthContext)

@@ -1,7 +1,9 @@
-const API_BASE_URL =  import.meta.env.VITE_API_URL // "https://realestate.ysminfosolution.com/api" //
+const API_BASE_URL = import.meta.env.VITE_API_URL
+
+// Variable to hold the pending refresh promise (prevents multiple refresh calls)
+let refreshPromise = null
 
 export const apiClient = {
-  
   getAuthToken: () => {
     const auth = localStorage.getItem("propease_auth")
     if (!auth) return null
@@ -22,7 +24,6 @@ export const apiClient = {
     }
   },
 
-  
   setTokens: (accessToken, refreshToken) => {
     const existing = localStorage.getItem("propease_auth")
     const parsed = existing ? JSON.parse(existing) : {}
@@ -38,36 +39,39 @@ export const apiClient = {
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`
 
-    // Start with user-specified headers
+    // 1. Prepare Headers
     const headers = { ...options.headers }
-
-    // Only set JSON header if body is not FormData
     if (!(options.body instanceof FormData)) {
       headers["Content-Type"] = "application/json"
     }
 
-    // Attach Bearer token
+    // 2. Attach Token
     const token = this.getAuthToken()
     if (token) {
       headers["Authorization"] = `Bearer ${token}`
-    } else {
-      console.warn("[apiClient] No access token found in localStorage")
     }
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      })
+      const response = await fetch(url, { ...options, headers })
 
-      // Token expired
+      // 3. Handle 401 (Unauthorized)
       if (response.status === 401) {
-        console.warn("Token expired or unauthorized, attempting refresh...")
+        console.warn("Token expired, attempting refresh...")
+
+        // Attempt refresh
         const refreshed = await this.refreshAccessToken()
+
         if (refreshed) {
-          headers["Authorization"] = `Bearer ${this.getAuthToken()}`
-          return fetch(url, { ...options, headers }).then((res) => this.handleResponse(res))
+          console.log("Token refreshed! Retrying original request...")
+          // Retry with NEW token
+          const newToken = this.getAuthToken()
+          headers["Authorization"] = `Bearer ${newToken}`
+          
+          const retryResponse = await fetch(url, { ...options, headers })
+          return this.handleResponse(retryResponse)
         } else {
+          // Refresh failed - Logout user
+          console.error("Refresh failed. Logging out.")
           this.clearTokens()
           window.location.href = "/login"
           throw new Error("Session expired. Please login again.")
@@ -81,7 +85,6 @@ export const apiClient = {
     }
   },
 
-  
   async handleResponse(response) {
     const text = await response.text()
     let data = null
@@ -90,7 +93,7 @@ export const apiClient = {
       try {
         data = JSON.parse(text)
       } catch (err) {
-        console.warn("[apiClient] Non-JSON or empty response:", text)
+        // Ignore JSON parse errors for non-JSON responses
       }
     }
 
@@ -102,26 +105,40 @@ export const apiClient = {
     return data
   },
 
+  // --- REFRESH LOGIC ---
   async refreshAccessToken() {
-    const refreshToken = this.getRefreshToken()
-    if (!refreshToken) return false
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      })
-
-      const data = await response.json()
-      if (response.ok) {
-        this.setTokens(data.accessToken, data.refreshToken)
-        return true
-      }
-      return false
-    } catch (error) {
-      console.error("Token refresh failed:", error)
-      return false
+    // If a refresh is already in progress, return that same promise
+    if (refreshPromise) {
+      return refreshPromise
     }
+
+    // Create a new refresh promise
+    refreshPromise = (async () => {
+      const refreshToken = this.getRefreshToken()
+      if (!refreshToken) return false
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          this.setTokens(data.accessToken, data.refreshToken)
+          return true
+        }
+        return false
+      } catch (error) {
+        console.error("Token refresh failed:", error)
+        return false
+      } finally {
+        // Clear the promise so next time we can try again
+        refreshPromise = null
+      }
+    })()
+
+    return refreshPromise
   },
 }

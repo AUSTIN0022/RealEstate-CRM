@@ -1,16 +1,18 @@
 import { Button } from "../../../components/ui/Button"
-import { Plus, Eye, Trash2 } from "lucide-react"
+import { Plus, Eye, Trash2, FileText, Upload } from "lucide-react"
 
 export default function StepAmenities({ 
   amenities, setAmenities, 
   customAmenity, setCustomAmenity, onAddCustomAmenity,
-  documents, setDocuments, onOpenDocModal, onPreviewDoc
+  documents, setDocuments, onOpenDocModal, onPreviewDoc,
+  letterHead, setLetterHead // <--- New Props
 }) {
   const predefined = ["Gym", "Pool", "Garden", "Parking", "Security", "Club House"]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Amenities & Documents</h2>
+      
       {/* Amenities Section */}
       <div>
         <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">Amenities</label>
@@ -57,14 +59,65 @@ export default function StepAmenities({
         </div>
       </div>
 
-      {/* Documents Section */}
+      <hr className="border-gray-200" />
+
+      {/* --- NEW: Dedicated Letter Head Section --- */}
+      <div>
+        <label className="block text-sm md:text-base font-medium text-gray-700 mb-3">
+            Project Letter Head <span className="text-red-500">*</span>
+        </label>
+        
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center bg-gray-50 hover:bg-gray-100 transition">
+            {letterHead ? (
+                <div className="w-full flex items-center justify-between bg-white p-3 border rounded-lg shadow-sm">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded">
+                            <FileText size={24} />
+                        </div>
+                        <div className="text-left">
+                            <p className="font-medium text-gray-900 truncate max-w-[200px]">{letterHead.name}</p>
+                            <p className="text-xs text-gray-500">{(letterHead.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => onPreviewDoc(letterHead)} className="text-gray-500 hover:text-indigo-600 p-2"><Eye size={20} /></button>
+                        <button onClick={() => setLetterHead(null)} className="text-gray-500 hover:text-red-600 p-2"><Trash2 size={20} /></button>
+                    </div>
+                </div>
+            ) : (
+                <div className="w-full">
+                   <input 
+                      type="file" 
+                      id="letterHeadUpload" 
+                      className="hidden" 
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                          if (e.target.files?.[0]) setLetterHead(e.target.files[0])
+                      }}
+                   />
+                   <label htmlFor="letterHeadUpload" className="cursor-pointer flex flex-col items-center gap-2">
+                      <div className="p-3 bg-white rounded-full shadow-sm">
+                        <Upload size={24} className="text-gray-500" />
+                      </div>
+                      <p className="text-sm text-gray-600 font-medium">Click to upload Letter Head</p>
+                      <p className="text-xs text-gray-400">PDF, JPG or PNG (Required)</p>
+                   </label>
+                </div>
+            )}
+        </div>
+      </div>
+
+      <hr className="border-gray-200" />
+
+      {/* Other Documents Section */}
       <div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-4">
-          <label className="block text-sm md:text-base font-medium text-gray-700">Documents</label>
+          <label className="block text-sm md:text-base font-medium text-gray-700">Other Documents</label>
           <Button onClick={onOpenDocModal} variant="primary" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
             <Plus size={18} /> Add Document
           </Button>
         </div>
+        
         {documents.length > 0 ? (
           <div className="space-y-2">
             {documents.map((doc) => (
@@ -84,7 +137,7 @@ export default function StepAmenities({
             ))}
           </div>
         ) : (
-          <p className="text-gray-600 text-center py-8 text-sm md:text-base">No documents added yet</p>
+          <p className="text-gray-600 text-center py-4 text-sm">No other documents added</p>
         )}
       </div>
     </div>

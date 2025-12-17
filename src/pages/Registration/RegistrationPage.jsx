@@ -43,6 +43,8 @@ export default function RegistrationPage() {
     documents, setDocuments, showDocModal, setShowDocModal, 
     docForm, setDocForm, handleAddDocument, handlePreviewDocument,
 
+    // letter Head
+    letterHead, setLetterHead,
     // Disbursements
     disbursements, setDisbursements, showDisbursementModal, setShowDisbursementModal,
     disbursementForm, setDisbursementForm, handleAddDisbursement,
@@ -68,6 +70,8 @@ export default function RegistrationPage() {
             amenities={amenities} setAmenities={setAmenities}
             customAmenity={customAmenity} setCustomAmenity={setCustomAmenity} onAddCustomAmenity={handleAddCustomAmenity}
             documents={documents} setDocuments={setDocuments} onOpenDocModal={() => setShowDocModal(true)} onPreviewDoc={handlePreviewDocument}
+            letterHead={letterHead}
+            setLetterHead={setLetterHead}
         />
       )
       case 4: return <StepDisbursements disbursements={disbursements} setDisbursements={setDisbursements} onOpenModal={() => setShowDisbursementModal(true)} />

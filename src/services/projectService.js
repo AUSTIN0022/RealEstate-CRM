@@ -1,16 +1,20 @@
 import { apiClient } from "./apiClient"
 
 // Helper function to recursively build FormData
-// FIXED: Now skips null/undefined values instead of sending them as empty strings.
-// This prevents Spring Boot from crashing when it receives a String for a MultipartFile field.
+// FIXED: This now skips null/undefined values entirely instead of converting them to empty strings.
+// This prevents Spring Boot 400 Errors when handling optional MultipartFile fields.
 const buildFormData = (formData, data, parentKey) => {
   if (data && typeof data === 'object' && !(data instanceof Date) && !(data instanceof File)) {
     Object.keys(data).forEach(key => {
       let keyName;
       if (parentKey) {
+        // If parent is an array (implied by integer keys), use brackets: wings[0]
+        // If parent is an object, use dot: wings[0].wingName
         if (Array.isArray(data)) {
+           // This handles the array index: wings[0]
            keyName = `${parentKey}[${key}]`;
         } else {
+           // This handles the object property: wings[0].wingName
            keyName = `${parentKey}.${key}`;
         }
       } else {
@@ -19,14 +23,14 @@ const buildFormData = (formData, data, parentKey) => {
       buildFormData(formData, data[key], keyName);
     });
   } else {
-    // --- FIX STARTS HERE ---
-    // If data is null or undefined, DO NOT append it to FormData.
-    // Spring Boot treats a missing key as null (correct), 
-    // but treats an empty string "" as a String (incorrect for File fields).
+    // --- FIX START ---
+    // If the value is null or undefined, simply return without appending.
+    // This allows the backend to correctly treat the field as missing/null
+    // rather than receiving an empty string "" which causes a Type Conversion Error for Files.
     if (data === null || data === undefined) {
       return;
     }
-    // --- FIX ENDS HERE ---
+    // --- FIX END ---
     
     formData.append(parentKey, data);
   }
@@ -43,21 +47,97 @@ export const projectService = {
     return await apiClient.request(`/projects/${projectId}`)
   },
 
- async createProject(projectData) {
+  async createProject(projectData) {
     try {
       const formData = new FormData()
 
-      // 1. Prepare data 
-      const payload = {
-        ...projectData,
-        mahareraNo: projectData.mahareraNo || "",
-        status: projectData.status || "UPCOMING",
-        path: projectData.path || "/",
-        progress: (projectData.progress || 0).toString(),
+      // --- 1. Basic Info ---
+      formData.append("projectName", projectData.projectName)
+      formData.append("projectAddress", projectData.projectAddress)
+      formData.append("startDate", projectData.startDate)
+      formData.append("completionDate", projectData.completionDate)
+      formData.append("mahareraNo", projectData.mahareraNo || "")
+      formData.append("status", projectData.status || "UPCOMING")
+      formData.append("path", projectData.path || "/")
+      formData.append("progress", (projectData.progress || 0).toString())
+
+      // --- 2. Wings & Floors (Nested) ---
+      if (projectData.wings && projectData.wings.length > 0) {
+        projectData.wings.forEach((wing, wIndex) => {
+          formData.append(`wings[${wIndex}].wingName`, wing.wingName)
+          formData.append(`wings[${wIndex}].noOfFloors`, wing.noOfFloors)
+          formData.append(`wings[${wIndex}].noOfProperties`, wing.noOfProperties)
+
+          if (wing.floors && wing.floors.length > 0) {
+            wing.floors.forEach((floor, fIndex) => {
+              formData.append(`wings[${wIndex}].floors[${fIndex}].floorNo`, floor.floorNo)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].floorName`, floor.floorName)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].propertyType`, floor.propertyType)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].property`, floor.property)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].area`, floor.area)
+              formData.append(`wings[${wIndex}].floors[${fIndex}].quantity`, floor.quantity)
+            })
+          }
+        })
       }
 
-      // 2. Use the helper to automatically flatten the object into FormData
-      buildFormData(formData, payload);
+      // --- 3. Project Approved Banks ---
+      if (projectData.projectApprovedBanksInfo && projectData.projectApprovedBanksInfo.length > 0) {
+        projectData.projectApprovedBanksInfo.forEach((bank, index) => {
+          formData.append(`projectApprovedBanksInfo[${index}].bankName`, bank.bankName)
+          formData.append(`projectApprovedBanksInfo[${index}].branchName`, bank.branchName)
+          formData.append(`projectApprovedBanksInfo[${index}].contactPerson`, bank.contactPerson)
+          formData.append(`projectApprovedBanksInfo[${index}].contactNumber`, bank.contactNumber)
+        })
+      }
+
+      // --- 4. Disbursement Banks ---
+      if (projectData.disbursementBanksDetail && projectData.disbursementBanksDetail.length > 0) {
+        projectData.disbursementBanksDetail.forEach((bank, index) => {
+          formData.append(`disbursementBanksDetail[${index}].bankName`, bank.bankName)
+          formData.append(`disbursementBanksDetail[${index}].branchName`, bank.branchName)
+          formData.append(`disbursementBanksDetail[${index}].accountName`, bank.accountName)
+          formData.append(`disbursementBanksDetail[${index}].ifsc`, bank.ifsc)
+          formData.append(`disbursementBanksDetail[${index}].accountType`, bank.accountType)
+          formData.append(`disbursementBanksDetail[${index}].accountNo`, bank.accountNo)
+
+          if (bank.disbursementLetterHead) {
+            formData.append(`disbursementBanksDetail[${index}].disbursementLetterHead`, bank.disbursementLetterHead)
+          }
+        })
+      }
+
+      // --- 5. Amenities ---
+      if (projectData.amenities && projectData.amenities.length > 0) {
+        projectData.amenities.forEach((amenity, index) => {
+          formData.append(`amenities[${index}].amenityName`, amenity.amenityName)
+        })
+      }
+
+      // --- 6. Documents (Files) ---
+      if (projectData.documents && projectData.documents.length > 0) {
+        projectData.documents.forEach((doc, index) => {
+          formData.append(`documents[${index}].documentType`, doc.documentType)
+          formData.append(`documents[${index}].documentTitle`, doc.documentTitle)
+          if (doc.document) {
+            formData.append(`documents[${index}].document`, doc.document)
+          }
+        })
+      }
+
+      // --- 7. Disbursements ---
+      if (projectData.disbursements && projectData.disbursements.length > 0) {
+        projectData.disbursements.forEach((d, index) => {
+          formData.append(`disbursements[${index}].disbursementTitle`, d.disbursementTitle)
+          formData.append(`disbursements[${index}].description`, d.description)
+          formData.append(`disbursements[${index}].percentage`, d.percentage)
+        })
+      }
+
+      // --- 8. Main Letterhead File ---
+      if (projectData.letterHeadFile) {
+        formData.append("letterHeadFile", projectData.letterHeadFile)
+      }
 
       const response = await apiClient.request("/projects", {
         method: "POST",
@@ -69,6 +149,7 @@ export const projectService = {
       throw error
     }
   },
+
 
   async updateProject(projectId, projectData) {
     return await apiClient.request(`/projects/${projectId}`, {
@@ -201,10 +282,14 @@ export const projectService = {
     })
   },
 
+  // --- Fixed Download/Preview Method ---
   async getDocumentSignedUrl(documentUrlPath) {
     try {
       const token = apiClient.getAuthToken()
+      
       const cleanPath = documentUrlPath.startsWith("/") ? documentUrlPath.slice(1) : documentUrlPath
+      
+      // Use encodeURI to preserve '/' structure while encoding spaces
       const formattedPath = encodeURI(cleanPath)
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/documents/download/${formattedPath}`, {

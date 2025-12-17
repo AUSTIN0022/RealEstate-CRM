@@ -46,7 +46,7 @@ export function useRegistrationForm() {
   })
   const [editingFloorIndex, setEditingFloorIndex] = useState(-1)
 
-  // Step 3: Bank Info (Updated with Account fields)
+  // Step 3: Bank Info
   const [banks, setBanks] = useState([])
   const [bankForm, setBankForm] = useState({
     bankName: "", 
@@ -54,13 +54,17 @@ export function useRegistrationForm() {
     contactPerson: "", 
     contactNumber: "", 
     ifsc: "",
-    accountNo: "",          // Added
-    accountType: "SAVINGS"  // Added
+    accountNo: "",          
+    accountType: "SAVINGS"  
   })
 
   // Step 4: Amenities & Documents
   const [amenities, setAmenities] = useState([])
   const [customAmenity, setCustomAmenity] = useState("")
+  
+  // --- NEW: Dedicated Letter Head State ---
+  const [letterHead, setLetterHead] = useState(null) 
+  
   const [documents, setDocuments] = useState([])
   const [docForm, setDocForm] = useState({ title: "", type: "FloorPlan", file: null })
 
@@ -70,8 +74,7 @@ export function useRegistrationForm() {
 
   const steps = ["Basic Info", "Wings & Floors", "Bank Info", "Amenities", "Disbursements", "Review"]
 
-  // --- WING LOGIC ---
-
+  // --- WING LOGIC (unchanged) ---
   useEffect(() => {
     if (!wingForm.manualFloorEntry && wingForm.noOfFloors && currentWingFloors.length === 0) {
       const count = parseInt(wingForm.noOfFloors) || 0
@@ -97,10 +100,7 @@ export function useRegistrationForm() {
     setEditingFloorIndex(-1)
   }
 
-  const handleOpenAddWing = () => {
-    resetWingModal()
-    setShowWingModal(true)
-  }
+  const handleOpenAddWing = () => { resetWingModal(); setShowWingModal(true) }
 
   const handleEditWing = (wing) => {
     setWingForm({
@@ -114,17 +114,13 @@ export function useRegistrationForm() {
   }
 
   const handleAddOrUpdateFloorRow = () => {
-    if (!floorInput.floorName) {
-      error("Floor Name is required")
-      return
-    }
+    if (!floorInput.floorName) { error("Floor Name is required"); return }
     const newFloorData = { ...floorInput }
     if (newFloorData.floorNo === "" || newFloorData.floorNo === undefined) {
        newFloorData.floorNo = editingFloorIndex >= 0 
           ? currentWingFloors[editingFloorIndex].floorNo 
           : currentWingFloors.length.toString()
     }
-    
     if (editingFloorIndex >= 0) {
       const updatedFloors = [...currentWingFloors]
       updatedFloors[editingFloorIndex] = newFloorData
@@ -137,11 +133,8 @@ export function useRegistrationForm() {
     setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
   }
 
-  const handleEditFloorRow = (index) => {
-    setFloorInput(currentWingFloors[index])
-    setEditingFloorIndex(index)
-  }
-
+  const handleEditFloorRow = (index) => { setFloorInput(currentWingFloors[index]); setEditingFloorIndex(index) }
+  
   const handleDeleteFloorRow = (index) => {
     const updated = currentWingFloors.filter((_, i) => i !== index)
     setCurrentWingFloors(updated)
@@ -152,16 +145,9 @@ export function useRegistrationForm() {
   }
 
   const handleSaveWing = () => {
-    if (!wingForm.wingName) {
-      error("Wing Name is required")
-      return
-    }
-    if (currentWingFloors.length === 0) {
-      error("Please add at least one floor configuration")
-      return
-    }
+    if (!wingForm.wingName) { error("Wing Name is required"); return }
+    if (currentWingFloors.length === 0) { error("Please add at least one floor configuration"); return }
     const totalProps = currentWingFloors.reduce((sum, floor) => sum + (parseInt(floor.quantity) || 0), 0)
-    
     const wingData = {
       wingId: wingForm.wingId || uuidv4(),
       wingName: wingForm.wingName,
@@ -169,7 +155,6 @@ export function useRegistrationForm() {
       noOfProperties: totalProps,
       floors: currentWingFloors
     }
-
     if (wingForm.wingId) {
         setWings(wings.map(w => w.wingId === wingForm.wingId ? wingData : w))
         success("Wing updated successfully")
@@ -177,42 +162,31 @@ export function useRegistrationForm() {
         setWings([...wings, wingData])
         success("Wing saved successfully")
     }
-    
     setShowWingModal(false)
   }
 
   const handleDeleteWing = (id) => setWings(wings.filter(w => w.wingId !== id))
 
   // --- NAVIGATION & VALIDATION ---
-
   const validateStep = () => {
     if (currentStep === 0) {
       if (!basicInfo.projectName || !basicInfo.mahareraNo || !basicInfo.startDate || !basicInfo.completionDate) {
-        error("Please fill all required fields")
-        return false
+        error("Please fill all required fields"); return false
       }
       if (!validateMahareraNo(basicInfo.mahareraNo)) {
-        error("Invalid Maharera number format")
-        return false
+        error("Invalid Maharera number format"); return false
       }
     }
     return true
   }
 
-  const handleNext = () => {
-    if (validateStep()) {
-      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))
-    }
-  }
-
+  const handleNext = () => { if (validateStep()) setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1)) }
   const handlePrev = () => setCurrentStep((prev) => Math.max(prev - 1, 0))
 
   // --- OTHER HANDLERS ---
-
   const handleAddBank = () => {
     if (!bankForm.bankName || !bankForm.branchName || !bankForm.contactPerson || !bankForm.contactNumber || !bankForm.accountNo) {
-      error("Please fill all bank fields")
-      return
+      error("Please fill all bank fields"); return
     }
     setBanks([...banks, { ...bankForm, bankDetailId: uuidv4() }])
     setBankForm({ 
@@ -249,10 +223,7 @@ export function useRegistrationForm() {
     success("Disbursement added successfully")
   }
 
-  const handlePreviewDocument = (file) => {
-    setPreviewFile(file)
-    setShowPreviewModal(true)
-  }
+  const handlePreviewDocument = (file) => { setPreviewFile(file); setShowPreviewModal(true) }
 
   // --- SUBMISSION LOGIC ---
 
@@ -262,9 +233,11 @@ export function useRegistrationForm() {
     if (wings.length === 0) { error("Please add at least one wing"); return }
     if (banks.length === 0) { error("Please add at least one bank"); return }
 
-    // --- FIX: Reuse the Main LetterHead for Disbursement Banks ---
-    const mainLetterHeadDoc = documents.find((d) => d.type === "LetterHead")
-    const mainLetterHeadFile = mainLetterHeadDoc ? mainLetterHeadDoc.file : null
+    // --- FIX 1: Validate LetterHead State ---
+    if (!letterHead) {
+        error("Please upload the Letter Head in the Amenities & Documents step")
+        return
+    }
 
     setIsSubmitting(true)
     try {
@@ -297,15 +270,14 @@ export function useRegistrationForm() {
           contactNumber: bank.contactNumber,
         })),
         
-        // --- Mapped Correctly with Hardcoded File ---
         disbursementBanksDetail: banks.map((bank) => ({
-          accountName: bank.bankName,
+          accountName: bank.contactPerson || bank.bankName,
           bankName: bank.bankName,
           branchName: bank.branchName,
           ifsc: bank.ifsc || "",
           accountType: bank.accountType || "SAVINGS",
           accountNo: bank.accountNo || "0000000000",
-          disbursementLetterHead: mainLetterHeadFile, // <--- REUSING MAIN FILE
+          disbursementLetterHead: letterHead, // --- FIX 2: Use dedicated state
         })),
         
         amenities: amenities.map((a) => ({ amenityName: a })),
@@ -319,7 +291,7 @@ export function useRegistrationForm() {
           description: d.description || "",
           percentage: Number.parseFloat(d.percentage),
         })),
-        letterHeadFile: mainLetterHeadFile,
+        letterHeadFile: letterHead, // --- FIX 3: Use dedicated state
       }
 
       await projectService.createProject(projectData)
@@ -336,31 +308,23 @@ export function useRegistrationForm() {
   return {
     currentStep, steps, isSubmitting,
     handleNext, handlePrev, handleSubmit,
-    
-    // Basic Info
     basicInfo, setBasicInfo,
-
-    // Wings
     wings, handleOpenAddWing, handleDeleteWing, handleEditWing,
     showWingModal, setShowWingModal, handleSaveWing,
     wingForm, setWingForm, currentWingFloors, 
     floorInput, setFloorInput, editingFloorIndex,
     handleAddOrUpdateFloorRow, handleEditFloorRow, handleDeleteFloorRow,
-
-    // Banks
     banks, setBanks, showBankModal, setShowBankModal, 
     bankForm, setBankForm, handleAddBank,
 
-    // Amenities & Docs
+    // Amenities, Documents AND LetterHead
     amenities, setAmenities, customAmenity, setCustomAmenity, handleAddCustomAmenity,
     documents, setDocuments, showDocModal, setShowDocModal, 
     docForm, setDocForm, handleAddDocument, handlePreviewDocument,
+    letterHead, setLetterHead, // <--- Exported here
 
-    // Disbursements
     disbursements, setDisbursements, showDisbursementModal, setShowDisbursementModal,
     disbursementForm, setDisbursementForm, handleAddDisbursement,
-
-    // Preview
     showPreviewModal, setShowPreviewModal, previewFile
   }
 }
