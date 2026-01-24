@@ -31,6 +31,27 @@ export const authService = {
     }
   },
 
+  async registerOrganization(data) {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/register-organization`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Registration failed")
+      }
+
+      return responseData
+    } catch (error) {
+      console.error("[v0] Registration error:", error)
+      throw error
+    }
+  },
+
   async logout() {
     apiClient.clearTokens()
     return true

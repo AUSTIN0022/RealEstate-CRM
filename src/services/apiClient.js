@@ -1,11 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL
 
-
-
-
-
-
-
 // Variable to hold the pending refresh promise (prevents multiple refresh calls)
 let refreshPromise = null
 
@@ -36,12 +30,7 @@ export const apiClient = {
     parsed.accessToken = accessToken
     parsed.refreshToken = refreshToken
     localStorage.setItem("propease_auth", JSON.stringify(parsed))
-  },
-
-
-
-
-
+  },  
 
   clearTokens: () => {
     localStorage.removeItem("propease_auth")

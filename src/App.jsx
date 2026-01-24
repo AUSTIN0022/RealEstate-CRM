@@ -5,6 +5,7 @@ import { DataProvider } from "./contexts/DataContext"
 import { useAuth } from "./contexts/AuthContext"
 import { ToastContainer } from "./components/ui/Toast"
 import LoginPage from "./pages/LoginPage"
+import SignUpPage from "./pages/SignUpPage"
 import DashboardPage from "./pages/DashboardPage"
 import ProjectsPage from "./pages/ProjectsPage"
 import ProjectDetailPage from "./pages/ProjectDetails/ProjectDetailPage"
@@ -21,90 +22,91 @@ import SettingsPage from "./pages/SettingsPage"
 import { ROLES } from "./utils/constants"
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { user, loading } = useAuth()
+    const { user, loading } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        )
+    }
 
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
+    if (!user) {
+        return <Navigate to="/login" replace />
+    }
 
-  if (requiredRole && user.role !== requiredRole) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">You don't have access to this page.</p>
-          <p className="text-sm text-gray-500">Contact your administrator for access.</p>
-        </div>
-      </div>
-    )
-  }
+    if (requiredRole && user.role !== requiredRole) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <p className="text-gray-600 mb-4">You don't have access to this page.</p>
+                    <p className="text-sm text-gray-500">Contact your administrator for access.</p>
+                </div>
+            </div>
+        )
+    }
 
-  return children
+    return children
 }
 
 function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/projects"
-        element={
-          <ProtectedRoute>
-            <ProjectsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/projects/:projectId"
-        element={
-          <ProtectedRoute>
-            <ProjectDetailPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/registration"
-        element={
-          <ProtectedRoute requiredRole={ROLES.ADMIN}>
-            <RegistrationPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/enquiry-book"
-        element={
-          <ProtectedRoute>
-            <EnquiryBookPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/follow-up"
-        element={
-          <ProtectedRoute>
-            <FollowUpPage />
-          </ProtectedRoute>
-        }
-      />
-      {/* <Route
+    return (
+        <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
+            <Route
+                path="/dashboard"
+                element={
+                    <ProtectedRoute>
+                        <DashboardPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/projects"
+                element={
+                    <ProtectedRoute>
+                        <ProjectsPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/projects/:projectId"
+                element={
+                    <ProtectedRoute>
+                        <ProjectDetailPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/registration"
+                element={
+                    <ProtectedRoute requiredRole={ROLES.ADMIN}>
+                        <RegistrationPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/enquiry-book"
+                element={
+                    <ProtectedRoute>
+                        <EnquiryBookPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/follow-up"
+                element={
+                    <ProtectedRoute>
+                        <FollowUpPage />
+                    </ProtectedRoute>
+                }
+            />
+            {/* <Route
         path="/bookings"
         element={
           <ProtectedRoute>
@@ -112,23 +114,23 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       /> */}
-      <Route
-        path="/clients"
-        element={
-          <ProtectedRoute>
-            <ClientsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/clients/:clientId"
-        element={
-          <ProtectedRoute>
-            <ClientProfilePage />
-          </ProtectedRoute>
-        }
-      />
-      {/* <Route
+            <Route
+                path="/clients"
+                element={
+                    <ProtectedRoute>
+                        <ClientsPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/clients/:clientId"
+                element={
+                    <ProtectedRoute>
+                        <ClientProfilePage />
+                    </ProtectedRoute>
+                }
+            />
+            {/* <Route
         path="/payments"
         element={
           <ProtectedRoute>
@@ -144,15 +146,15 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       /> */}
-      <Route
-        path="/users"
-        element={
-          <ProtectedRoute requiredRole={ROLES.ADMIN}>
-            <UsersPage />
-          </ProtectedRoute>
-        }
-      />
-      {/* <Route
+            <Route
+                path="/users"
+                element={
+                    <ProtectedRoute requiredRole={ROLES.ADMIN}>
+                        <UsersPage />
+                    </ProtectedRoute>
+                }
+            />
+            {/* <Route
         path="/settings"
         element={
           <ProtectedRoute requiredRole={ROLES.ADMIN}>
@@ -160,20 +162,20 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       /> */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
-  )
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+    )
 }
 
 export default function App() {
-  return (
-    <Router>
-      <AuthProvider>
-        <DataProvider>
-          <ToastContainer />
-          <AppRoutes />
-        </DataProvider>
-      </AuthProvider>
-    </Router>
-  )
+    return (
+        <Router>
+            <AuthProvider>
+                <DataProvider>
+                    <ToastContainer />
+                    <AppRoutes />
+                </DataProvider>
+            </AuthProvider>
+        </Router>
+    )
 }
