@@ -133,7 +133,6 @@ export default function SignUpPage() {
                                     value={formData.orgName}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-200 hover:bg-white"
-                                    placeholder="YSM info solution"
                                 />
                             </div>
 
@@ -146,7 +145,6 @@ export default function SignUpPage() {
                                     value={formData.orgEmail}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-200 hover:bg-white"
-                                    placeholder="ysmin@gmail.com"
                                 />
                             </div>
 
@@ -159,7 +157,6 @@ export default function SignUpPage() {
                                     value={formData.fullName}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-200 hover:bg-white"
-                                    placeholder="kadam smita"
                                 />
                             </div>
 
@@ -172,7 +169,7 @@ export default function SignUpPage() {
                                     value={formData.mobileNo}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-200 hover:bg-white"
-                                    placeholder="7854218956"
+
                                 />
                             </div>
 
@@ -185,7 +182,6 @@ export default function SignUpPage() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-200 hover:bg-white"
-                                    placeholder="smi123@gmail.com"
                                 />
                             </div>
 
@@ -198,7 +194,6 @@ export default function SignUpPage() {
                                     value={formData.username}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-200 hover:bg-white"
-                                    placeholder="smi123"
                                 />
                             </div>
                         </div>
