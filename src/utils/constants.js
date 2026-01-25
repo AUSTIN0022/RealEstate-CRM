@@ -50,6 +50,9 @@ export const STATUS_COLORS = {
     ONGOING: "#f59e0b",
     COMPLETED: "#10b981",
     CANCELLED: "#6b7280",
+    HOT_LEAD: "#f59e0b",
+    WARM_LEAD: "#f59e0b",
+    COLD_LEAD: "#f59e0b",
     UPCOMING: "#8b5cf6",
     IN_PROGRESS: "#3b82f6",
 }
