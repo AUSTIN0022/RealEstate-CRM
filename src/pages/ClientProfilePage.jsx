@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import {
     ArrowLeft, Mail, Phone, MapPin, Briefcase, Building,
-    History, MessageSquare, Plus, Send, Loader2, Calendar, FileText
+    History, MessageSquare, Plus, Send, Loader2, Calendar, FileText, User, Edit
 } from "lucide-react"
 
 // Layout & UI Components
@@ -25,6 +25,7 @@ import { clientService } from "../services/clientService"
 import { enquiryService } from "../services/enquiryService"
 import { followUpService } from "../services/followUpService"
 import { projectService } from "../services/projectService"
+import { validateEmail, validatePhone, validatePAN, validateAadhar } from "../utils/helpers"
 
 // Constants
 const FOLLOWUP_EVENT_TAGS = {
@@ -62,6 +63,21 @@ export default function ClientProfilePage() {
         body: "",
         eventTag: FOLLOWUP_EVENT_TAGS.CALL,
         followUpDateTime: ""
+    })
+
+    // --- Edit Client Modal State ---
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [editForm, setEditForm] = useState({
+        clientName: "",
+        email: "",
+        mobileNumber: "",
+        dob: "",
+        city: "",
+        address: "",
+        occupation: "",
+        company: "",
+        panNo: "",
+        aadharNo: "",
     })
 
     // --- New Enquiry Modal State ---
@@ -112,6 +128,64 @@ export default function ClientProfilePage() {
 
         if (clientId) fetchClientData()
     }, [clientId])
+
+    // --- Edit Client Handlers ---
+    const openEditModal = () => {
+        setEditForm({
+            clientName: client.clientName || "",
+            email: client.email || "",
+            mobileNumber: client.mobileNumber || "",
+            dob: client.dob || "",
+            city: client.city || "",
+            address: client.address || "",
+            occupation: client.occupation || "",
+            company: client.company || "",
+            panNo: client.panNo || "",
+            aadharNo: client.aadharNo || "",
+        })
+        setShowEditModal(true)
+    }
+
+    const handleUpdateClient = async () => {
+        if (!editForm.clientName || !editForm.email || !editForm.mobileNumber) {
+            showError("Please fill all required fields")
+            return
+        }
+
+        if (!validateEmail(editForm.email)) {
+            showError("Invalid email format")
+            return
+        }
+
+        if (!validatePhone(editForm.mobileNumber)) {
+            showError("Mobile number must be 10 digits")
+            return
+        }
+
+        if (editForm.panNo && !validatePAN(editForm.panNo)) {
+            showError("Invalid PAN format")
+            return
+        }
+
+        if (editForm.aadharNo && !validateAadhar(editForm.aadharNo)) {
+            showError("Invalid Aadhar format")
+            return
+        }
+
+        try {
+            await clientService.updateClient(clientId, editForm)
+            showSuccess("Client updated successfully")
+
+            // Refresh client data
+            const updatedClient = await clientService.getClientById(clientId)
+            setClient(updatedClient)
+
+            setShowEditModal(false)
+        } catch (err) {
+            console.error("Failed to update client:", err)
+            showError("Failed to update client")
+        }
+    }
 
 
     // --- 2. Fetch Timeline Data ---
@@ -453,6 +527,9 @@ export default function ClientProfilePage() {
                         <Button variant="outline" className="flex items-center gap-2" onClick={openNewEnquiryModal}>
                             <Plus size={16} /> New Enquiry
                         </Button>
+                        <Button variant="primary" className="flex items-center gap-2" onClick={openEditModal}>
+                            <Edit size={16} /> Edit Profile
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -677,6 +754,160 @@ export default function ClientProfilePage() {
                             </div>
                         </div>
                     )
+                }
+            />
+
+            {/* --- Edit Client Modal --- */}
+            <Modal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                title="Edit Client Profile"
+                type="info"
+                size="4xl"
+                variant="form"
+                scrollBehavior="outside"
+                twoColumn={true}
+                columnGap="lg"
+                leftColumn={
+                    <div className="space-y-6">
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                    <User className="w-4 h-4 text-indigo-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900">Personal Information</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <FormInput
+                                    label="Client Name"
+                                    value={editForm.clientName}
+                                    onChange={(e) => setEditForm({ ...editForm, clientName: e.target.value })}
+                                    required
+                                />
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormInput
+                                        label="Email"
+                                        type="email"
+                                        value={editForm.email}
+                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                        required
+                                    />
+
+                                    <FormInput
+                                        label="Mobile Number"
+                                        value={editForm.mobileNumber}
+                                        onChange={(e) => setEditForm({ ...editForm, mobileNumber: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <FormInput
+                                    label="Date of Birth"
+                                    type="date"
+                                    value={editForm.dob}
+                                    onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-gray-200">
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <MapPin className="w-4 h-4 text-purple-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900">Address Details</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <FormInput
+                                    label="City"
+                                    value={editForm.city}
+                                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                                />
+
+                                <FormInput
+                                    label="Address"
+                                    value={editForm.address}
+                                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                }
+                rightColumn={
+                    <div className="space-y-6">
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <Briefcase className="w-4 h-4 text-emerald-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900">Professional Details</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <FormInput
+                                    label="Occupation"
+                                    value={editForm.occupation}
+                                    onChange={(e) => setEditForm({ ...editForm, occupation: e.target.value })}
+                                />
+
+                                <FormInput
+                                    label="Company"
+                                    value={editForm.company}
+                                    onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-gray-200">
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                                    <FileText className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900">Document Details</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <FormInput
+                                    label="PAN Number"
+                                    value={editForm.panNo}
+                                    onChange={(e) => setEditForm({ ...editForm, panNo: e.target.value.toUpperCase() })}
+                                    placeholder="ABCDE1234F"
+                                />
+
+                                <FormInput
+                                    label="Aadhar Number"
+                                    value={editForm.aadharNo}
+                                    onChange={(e) => setEditForm({ ...editForm, aadharNo: e.target.value })}
+                                    placeholder="123456789012"
+                                />
+                            </div>
+
+                            <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                <p className="text-xs text-blue-700">
+                                    <span className="font-semibold">Note:</span> Document details are optional but recommended for
+                                    compliance purposes.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                }
+                footer={
+                    <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end">
+                        <Button
+                            onClick={() => setShowEditModal(false)}
+                            variant="outline"
+                            size="md"
+                            className="w-full sm:w-auto"
+                        >
+                            Cancel
+                        </Button>
+                        <Button onClick={handleUpdateClient} size="md" className="w-full sm:w-auto">
+                            Update Client
+                        </Button>
+                    </div>
                 }
             />
         </AppLayout>
