@@ -185,7 +185,7 @@ export default function UsersPage() {
         {
             key: "role",
             label: "Role",
-            render: (val) => <Badge status={val === "ADMIN" ? "COMPLETED" : "ONGOING"}>{val}</Badge>,
+            render: (val) => <Badge status={val === "ADMIN" ? "BOOKED" : "ONGOING"}>{val}</Badge>,
         },
         {
             key: "enabled",

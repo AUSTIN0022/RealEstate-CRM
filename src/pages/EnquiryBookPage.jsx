@@ -339,7 +339,6 @@ export default function EnquiryBookPage() {
                     >
                         <option value="">All Status</option>
                         <option value="ONGOING">Ongoing</option>
-                        <option value="COMPLETED">Completed</option>
                         <option value="CANCELLED">Cancelled</option>
                         <option value="BOOKED">Booked</option>
                         <option value="HOT_LEAD">Hot Lead</option>
@@ -558,7 +557,6 @@ export default function EnquiryBookPage() {
                                         onChange={(e) => setForm({ ...form, status: e.target.value })}
                                         options={[
                                             { value: "ONGOING", label: "Ongoing" },
-                                            { value: "COMPLETED", label: "Completed" },
                                             { value: "CANCELLED", label: "Cancelled" },
                                             { value: "BOOKED", label: "Booked" },
                                             { value: "HOT_LEAD", label: "Hot Lead" },
@@ -634,8 +632,8 @@ export default function EnquiryBookPage() {
                             options={[
                                 { value: "", label: "All Status" },
                                 { value: "ONGOING", label: "Ongoing" },
-                                { value: "COMPLETED", label: "Completed" },
                                 { value: "CANCELLED", label: "Cancelled" },
+                                { value: "BOOKED", label: "Booked" },
                             ]}
                         />
                     </div>

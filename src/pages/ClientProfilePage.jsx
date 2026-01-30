@@ -108,6 +108,7 @@ export default function ClientProfilePage() {
     const [editEnquiryForm, setEditEnquiryForm] = useState(null)
     const [loadingEnquiryDetails, setLoadingEnquiryDetails] = useState(false)
     const [updatingEnquiry, setUpdatingEnquiry] = useState(false)
+    const [actionLoading, setActionLoading] = useState({ id: null, type: null }) // Added state for specific action loading
 
 
     // --- 1. Fetch Client Data ---
@@ -403,6 +404,7 @@ export default function ClientProfilePage() {
     // --- View/Edit Enquiry Handlers ---
     const handleViewEnquiry = async (id) => {
         try {
+            setActionLoading({ id, type: 'view' })
             setLoadingEnquiryDetails(true)
             const data = await enquiryService.getEnquiry(id)
             setSelectedEnquiry(data)
@@ -412,11 +414,13 @@ export default function ClientProfilePage() {
             showError("Failed to load enquiry details")
         } finally {
             setLoadingEnquiryDetails(false)
+            setActionLoading({ id: null, type: null })
         }
     }
 
     const handleEditEnquiry = async (id) => {
         try {
+            setActionLoading({ id, type: 'edit' })
             setLoadingEnquiryDetails(true)
             const data = await enquiryService.getEnquiry(id)
             setSelectedEnquiry(data)
@@ -436,6 +440,7 @@ export default function ClientProfilePage() {
             showError("Failed to load enquiry details for editing")
         } finally {
             setLoadingEnquiryDetails(false)
+            setActionLoading({ id: null, type: null })
         }
     }
 
@@ -623,9 +628,8 @@ export default function ClientProfilePage() {
                                     render: (status) => {
                                         const statusColors = {
                                             "ONGOING": "bg-blue-100 text-blue-800",
-                                            "COMPLETED": "bg-green-100 text-green-800",
+                                            "BOOKED": "bg-green-100 text-green-800",
                                             "CANCELLED": "bg-red-100 text-red-800",
-                                            "PENDING": "bg-yellow-100 text-yellow-800",
                                             "HOT_LEAD": "bg-yellow-100 text-yellow-800",
                                             "WARM_LEAD": "bg-yellow-100 text-yellow-800",
                                             "COLD_LEAD": "bg-yellow-100 text-yellow-800",
@@ -644,17 +648,27 @@ export default function ClientProfilePage() {
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => handleViewEnquiry(row.enquiryId)}
-                                                className="p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-blue-600 transition-colors"
+                                                disabled={actionLoading.id === row.enquiryId}
+                                                className="p-2 hover:bg-gray-200 rounded text-gray-700 hover:text-blue-600 transition-colors disabled:opacity-50"
                                                 title="View Details"
                                             >
-                                                <Eye size={16} />
+                                                {actionLoading.id === row.enquiryId && actionLoading.type === 'view' ? (
+                                                    <Loader2 className="animate-spin" size={16} />
+                                                ) : (
+                                                    <Eye size={16} />
+                                                )}
                                             </button>
                                             <button
                                                 onClick={() => handleEditEnquiry(row.enquiryId)}
-                                                className="p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-indigo-600 transition-colors"
+                                                disabled={actionLoading.id === row.enquiryId}
+                                                className="p-2 hover:bg-gray-200 rounded text-gray-700 hover:text-indigo-600 transition-colors disabled:opacity-50"
                                                 title="Edit Enquiry"
                                             >
-                                                <Edit size={16} />
+                                                {actionLoading.id === row.enquiryId && actionLoading.type === 'edit' ? (
+                                                    <Loader2 className="animate-spin" size={16} />
+                                                ) : (
+                                                    <Edit size={16} />
+                                                )}
                                             </button>
                                         </div>
                                     )
@@ -944,9 +958,8 @@ export default function ClientProfilePage() {
                                         onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, status: e.target.value })}
                                         options={[
                                             { value: "ONGOING", label: "Ongoing" },
-                                            { value: "COMPLETED", label: "Completed" },
+                                            { value: "BOOKED", label: "Booked" },
                                             { value: "CANCELLED", label: "Cancelled" },
-                                            { value: "PENDING", label: "Pending" },
                                             { value: "HOT_LEAD", label: "Hot Lead" },
                                             { value: "WARM_LEAD", label: "Warm Lead" },
                                             { value: "COLD_LEAD", label: "Cold Lead" },

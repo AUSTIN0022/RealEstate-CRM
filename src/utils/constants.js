@@ -19,7 +19,6 @@ export const FLAT_STATUS = {
 
 export const ENQUIRY_STATUS = {
     ONGOING: "ONGOING",
-    COMPLETED: "COMPLETED",
     CANCELLED: "CANCELLED",
     BOOKED: "BOOKED",
     HOT_LEAD: "HOT_LEAD",
