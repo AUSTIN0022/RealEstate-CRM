@@ -535,32 +535,76 @@ export default function ClientProfilePage() {
         {
             label: "Overview",
             content: (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-6">
+                    {/* Personal & Professional Info Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Personal Info */}
                         <Card className="p-6">
-                            <h3 className="text-lg font-semibold mb-4 text-gray-800">Contact Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Mail size={18} /></div>
-                                    <div><p className="text-xs text-gray-500 font-medium uppercase">Email</p><p className="text-gray-900 break-all">{client.email}</p></div>
+                            <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                                <User className="text-indigo-600" size={20} /> Personal Information
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="flex justify-between border-b border-gray-100 pb-2">
+                                    <span className="text-gray-500 text-sm">Date of Birth</span>
+                                    <span className="font-medium text-gray-900">{client.dob ? formatDate(client.dob) : "N/A"}</span>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-green-50 rounded-lg text-green-600"><Phone size={18} /></div>
-                                    <div><p className="text-xs text-gray-500 font-medium uppercase">Mobile</p><p className="text-gray-900">{client.mobileNumber}</p></div>
+                                <div className="flex justify-between border-b border-gray-100 pb-2">
+                                    <span className="text-gray-500 text-sm">PAN Number</span>
+                                    <span className="font-medium text-gray-900">{client.panNo || "N/A"}</span>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><MapPin size={18} /></div>
-                                    <div><p className="text-xs text-gray-500 font-medium uppercase">City</p><p className="text-gray-900">{client.city}</p></div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 text-sm">Aadhar Number</span>
+                                    <span className="font-medium text-gray-900">{client.aadharNo || "N/A"}</span>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-gray-50 rounded-lg text-gray-600"><MapPin size={18} /></div>
-                                    <div><p className="text-xs text-gray-500 font-medium uppercase">Address</p><p className="text-gray-900">{client.address || "N/A"}</p></div>
+                            </div>
+                        </Card>
+
+                        {/* Professional Info */}
+                        <Card className="p-6">
+                            <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                                <Briefcase className="text-indigo-600" size={20} /> Professional Details
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="flex justify-between border-b border-gray-100 pb-2">
+                                    <span className="text-gray-500 text-sm">Occupation</span>
+                                    <span className="font-medium text-gray-900">{client.occupation || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 text-sm">Company/Organization</span>
+                                    <span className="font-medium text-gray-900">{client.company || "N/A"}</span>
                                 </div>
                             </div>
                         </Card>
                     </div>
 
-
+                    {/* Contact Info (Full Width) */}
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                            <Phone className="text-indigo-600" size={20} /> Contact Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Mail size={18} /></div>
+                                <div><p className="text-xs text-gray-500 font-medium uppercase">Email</p><p className="text-gray-900 break-all">{client.email}</p></div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-green-50 rounded-lg text-green-600"><Phone size={18} /></div>
+                                <div><p className="text-xs text-gray-500 font-medium uppercase">Mobile</p><p className="text-gray-900">{client.mobileNumber}</p></div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-teal-50 rounded-lg text-teal-600"><Phone size={18} /></div>
+                                <div><p className="text-xs text-gray-500 font-medium uppercase">Landline</p><p className="text-gray-900">{client.landlineNumber || "N/A"}</p></div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><MapPin size={18} /></div>
+                                <div><p className="text-xs text-gray-500 font-medium uppercase">City</p><p className="text-gray-900">{client.city}</p></div>
+                            </div>
+                            <div className="flex items-start gap-3 md:col-span-2">
+                                <div className="p-2 bg-gray-50 rounded-lg text-gray-600"><MapPin size={18} /></div>
+                                <div><p className="text-xs text-gray-500 font-medium uppercase">Address</p><p className="text-gray-900">{client.address || "N/A"}</p></div>
+                            </div>
+                        </div>
+                    </Card>
                 </div>
             ),
         },
