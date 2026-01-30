@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import {
     ArrowLeft, Mail, Phone, MapPin, Briefcase, Building,
-    History, MessageSquare, Plus, Send, Loader2, Calendar, FileText, User, Edit
+    History, MessageSquare, Plus, Send, Loader2, Calendar, FileText, User, Edit, Eye
 } from "lucide-react"
 
 // Layout & UI Components
@@ -100,6 +100,14 @@ export default function ClientProfilePage() {
         remark: ""
     }
     const [enquiryForm, setEnquiryForm] = useState(initialEnquiryForm)
+
+    // --- View/Edit Enquiry Modal State ---
+    const [enquiryModalOpen, setEnquiryModalOpen] = useState(false)
+    const [enquiryModalMode, setEnquiryModalMode] = useState('view') // 'view' | 'edit'
+    const [selectedEnquiry, setSelectedEnquiry] = useState(null)
+    const [editEnquiryForm, setEditEnquiryForm] = useState(null)
+    const [loadingEnquiryDetails, setLoadingEnquiryDetails] = useState(false)
+    const [updatingEnquiry, setUpdatingEnquiry] = useState(false)
 
 
     // --- 1. Fetch Client Data ---
@@ -258,6 +266,26 @@ export default function ClientProfilePage() {
     }, [propertyOptions, enquiryForm.propertyType, enquiryForm.property])
 
 
+    // --- Edit Enquiry Property Cascading Logic ---
+    const editAvailablePropertyTypes = useMemo(() => {
+        if (!propertyOptions?.propertyTypes) return []
+        return propertyOptions.propertyTypes.map(pt => ({ value: pt.propertyType, label: pt.propertyType }))
+    }, [propertyOptions])
+
+    const editAvailableProperties = useMemo(() => {
+        if (!propertyOptions?.propertyTypes || !editEnquiryForm?.propertyType) return []
+        const typeObj = propertyOptions.propertyTypes.find(pt => pt.propertyType === editEnquiryForm.propertyType)
+        return typeObj ? typeObj.properties.map(p => ({ value: p.property, label: p.property })) : []
+    }, [propertyOptions, editEnquiryForm?.propertyType])
+
+    const editAvailableAreas = useMemo(() => {
+        if (!propertyOptions?.propertyTypes || !editEnquiryForm?.propertyType || !editEnquiryForm?.property) return []
+        const typeObj = propertyOptions.propertyTypes.find(pt => pt.propertyType === editEnquiryForm.propertyType)
+        const propObj = typeObj?.properties.find(p => p.property === editEnquiryForm.property)
+        return propObj ? propObj.areas.map(a => ({ value: a.area, label: `${a.area} sq ft` })) : []
+    }, [propertyOptions, editEnquiryForm?.propertyType, editEnquiryForm?.property])
+
+
     // --- 4. Handlers ---
 
     const handleOpenTimeline = () => { // Renamed from handleOpenDrawer
@@ -372,6 +400,91 @@ export default function ClientProfilePage() {
         }
     }
 
+    // --- View/Edit Enquiry Handlers ---
+    const handleViewEnquiry = async (id) => {
+        try {
+            setLoadingEnquiryDetails(true)
+            const data = await enquiryService.getEnquiry(id)
+            setSelectedEnquiry(data)
+            setEnquiryModalMode('view')
+            setEnquiryModalOpen(true)
+        } catch (err) {
+            showError("Failed to load enquiry details")
+        } finally {
+            setLoadingEnquiryDetails(false)
+        }
+    }
+
+    const handleEditEnquiry = async (id) => {
+        try {
+            setLoadingEnquiryDetails(true)
+            const data = await enquiryService.getEnquiry(id)
+            setSelectedEnquiry(data)
+            setEditEnquiryForm(data)
+
+            // Allow editing of project-dependent fields by loading options
+            if (data.projectId) {
+                setOptionsLoading(true)
+                const options = await enquiryService.getPropertyOptions(data.projectId)
+                setPropertyOptions(options)
+                setOptionsLoading(false)
+            }
+
+            setEnquiryModalMode('edit')
+            setEnquiryModalOpen(true)
+        } catch (err) {
+            showError("Failed to load enquiry details for editing")
+        } finally {
+            setLoadingEnquiryDetails(false)
+        }
+    }
+
+    const handleUpdateEnquirySubmit = async () => {
+        if (!editEnquiryForm) return
+
+        try {
+            setUpdatingEnquiry(true)
+            await enquiryService.updateEnquiry(editEnquiryForm.enquiryId, editEnquiryForm)
+            showSuccess("Enquiry updated successfully")
+            setEnquiryModalOpen(false)
+
+            // Refresh list
+            const updatedEnquiries = await enquiryService.getClientEnquiries(clientId)
+            setEnquiries(updatedEnquiries || [])
+
+        } catch (err) {
+            console.error(err)
+            showError("Failed to update enquiry")
+        } finally {
+            setUpdatingEnquiry(false)
+        }
+    }
+
+    const handleEditProjectChange = async (e) => {
+        const newProjectId = e.target.value
+        setEditEnquiryForm(prev => ({
+            ...prev,
+            projectId: newProjectId,
+            propertyType: "",
+            property: "",
+            area: ""
+        }))
+
+        if (newProjectId) {
+            try {
+                setOptionsLoading(true)
+                const options = await enquiryService.getPropertyOptions(newProjectId)
+                setPropertyOptions(options)
+            } catch (err) {
+                showError("Failed to load property options")
+            } finally {
+                setOptionsLoading(false)
+            }
+        } else {
+            setPropertyOptions(null)
+        }
+    }
+
     // --- Render Helpers ---
 
     // Transform nodes for Timeline Component
@@ -480,6 +593,28 @@ export default function ClientProfilePage() {
                                         )
                                     }
                                 },
+                                {
+                                    key: "action",
+                                    label: "Action",
+                                    render: (_, row) => (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleViewEnquiry(row.enquiryId)}
+                                                className="p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-blue-600 transition-colors"
+                                                title="View Details"
+                                            >
+                                                <Eye size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleEditEnquiry(row.enquiryId)}
+                                                className="p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-indigo-600 transition-colors"
+                                                title="Edit Enquiry"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                        </div>
+                                    )
+                                }
                             ]}
                             data={enquiries}
                         />
@@ -638,6 +773,153 @@ export default function ClientProfilePage() {
                     </div>
                 }
             />
+
+            {/* --- View/Edit Enquiry Modal --- */}
+            <Modal
+                isOpen={enquiryModalOpen}
+                onClose={() => setEnquiryModalOpen(false)}
+                title={enquiryModalMode === 'view' ? "Enquiry Details" : "Edit Enquiry"}
+                size="4xl"
+                variant={enquiryModalMode === 'view' ? "default" : "form"}
+                scrollBehavior="outside"
+                footer={
+                    enquiryModalMode === 'edit' ? (
+                        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end">
+                            <button
+                                onClick={() => setEnquiryModalOpen(false)}
+                                disabled={updatingEnquiry}
+                                className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors w-full sm:w-auto disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateEnquirySubmit}
+                                disabled={updatingEnquiry}
+                                className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm w-full sm:w-auto disabled:opacity-70 flex items-center justify-center gap-2"
+                            >
+                                {updatingEnquiry ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</> : "Update Enquiry"}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex justify-end">
+                            <Button onClick={() => setEnquiryModalOpen(false)}>Close</Button>
+                        </div>
+                    )
+                }
+            >
+                {loadingEnquiryDetails ? (
+                    <div className="flex justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                    </div>
+                ) : selectedEnquiry ? (
+                    <div className="space-y-8">
+                        {/* Property Section */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <Building className="w-4 h-4 text-purple-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900">Property Details</h3>
+                            </div>
+
+                            {enquiryModalMode === 'view' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Project</p><p className="font-medium text-gray-900">{selectedEnquiry.projectName || "N/A"}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Property Type</p><p className="font-medium text-gray-900">{selectedEnquiry.propertyType || "N/A"}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Property</p><p className="font-medium text-gray-900">{selectedEnquiry.property || "N/A"}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Area</p><p className="font-medium text-gray-900">{selectedEnquiry.area ? `${selectedEnquiry.area} sq ft` : "N/A"}</p></div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="col-span-2">
+                                        <FormSelect
+                                            label="Project"
+                                            value={editEnquiryForm?.projectId || ""}
+                                            onChange={handleEditProjectChange}
+                                            options={projects.map((p) => ({ value: p.projectId, label: p.projectName }))}
+                                            required
+                                        />
+                                    </div>
+                                    <FormSelect
+                                        label="Property Type"
+                                        value={editEnquiryForm?.propertyType || ""}
+                                        onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, propertyType: e.target.value, property: "", area: "" })}
+                                        options={editAvailablePropertyTypes}
+                                        required
+                                        disabled={!editEnquiryForm?.projectId || optionsLoading}
+                                        placeholder={optionsLoading ? "Loading..." : "Select Type"}
+                                    />
+                                    <FormSelect
+                                        label="Property"
+                                        value={editEnquiryForm?.property || ""}
+                                        onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, property: e.target.value, area: "" })}
+                                        options={editAvailableProperties}
+                                        placeholder="Select Property"
+                                        required
+                                        disabled={!editEnquiryForm?.propertyType}
+                                    />
+                                    <FormSelect
+                                        label="Area (sq ft)"
+                                        value={editEnquiryForm?.area || ""}
+                                        onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, area: e.target.value })}
+                                        options={editAvailableAreas}
+                                        required
+                                        disabled={!editEnquiryForm?.property}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Enquiry Details */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                                    <MessageSquare className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900">Enquiry Details</h3>
+                            </div>
+
+                            {enquiryModalMode === 'view' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Budget</p><p className="font-medium text-gray-900">{selectedEnquiry.budget || "N/A"}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Status</p>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-800`}>{selectedEnquiry.status}</span>
+                                    </div>
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Reference Source</p><p className="font-medium text-gray-900">{selectedEnquiry.reference || "N/A"}</p></div>
+                                    <div><p className="text-xs text-gray-500 font-medium uppercase mb-1">Reference Name</p><p className="font-medium text-gray-900">{selectedEnquiry.referenceName || "N/A"}</p></div>
+                                    <div className="col-span-2"><p className="text-xs text-gray-500 font-medium uppercase mb-1">Remark</p><p className="font-medium text-gray-900">{selectedEnquiry.remark || "N/A"}</p></div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="col-span-2">
+                                        <FormInput label="Budget" value={editEnquiryForm?.budget || ""} onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, budget: e.target.value })} required />
+                                    </div>
+                                    <FormSelect
+                                        label="Status"
+                                        value={editEnquiryForm?.status || "ONGOING"}
+                                        onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, status: e.target.value })}
+                                        options={[
+                                            { value: "ONGOING", label: "Ongoing" },
+                                            { value: "COMPLETED", label: "Completed" },
+                                            { value: "CANCELLED", label: "Cancelled" },
+                                            { value: "PENDING", label: "Pending" },
+                                            { value: "HOT_LEAD", label: "Hot Lead" },
+                                            { value: "WARM_LEAD", label: "Warm Lead" },
+                                            { value: "COLD_LEAD", label: "Cold Lead" },
+                                        ]}
+                                        required
+                                    />
+                                    <FormInput label="Reference Source" value={editEnquiryForm?.reference || ""} onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, reference: e.target.value })} />
+                                    <FormInput label="Reference Name" value={editEnquiryForm?.referenceName || ""} onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, referenceName: e.target.value })} />
+                                    <div className="col-span-2">
+                                        <FormTextarea label="Remark" value={editEnquiryForm?.remark || ""} onChange={(e) => setEditEnquiryForm({ ...editEnquiryForm, remark: e.target.value })} rows={3} placeholder="Add any additional notes..." />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
+            </Modal>
 
             {/* --- Timeline Modal (Replaces Drawer) --- */}
             <TwoColumnModal
