@@ -15,24 +15,30 @@ import {
     Legend,
     ResponsiveContainer,
 } from "recharts"
-import { Users, Home, DollarSign, Building2, TrendingUp, Activity, Clock } from "lucide-react"
+import { Users, Home, DollarSign, Building2, TrendingUp, Activity, Clock, RefreshCw } from "lucide-react"
 
 export default function DashboardPage() {
     const { user } = useAuth()
     const [dashboardData, setDashboardData] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [lastUpdated, setLastUpdated] = useState(new Date())
+    const [refreshing, setRefreshing] = useState(false)
+
+    const fetchDashboard = async () => {
+        setRefreshing(true)
+        try {
+            const data = await dashboardService.getDashboard()
+            setDashboardData(data)
+            setLastUpdated(new Date())
+        } catch (error) {
+            console.error("Failed to fetch dashboard data:", error)
+        } finally {
+            setLoading(false)
+            setRefreshing(false)
+        }
+    }
 
     useEffect(() => {
-        const fetchDashboard = async () => {
-            try {
-                const data = await dashboardService.getDashboard()
-                setDashboardData(data)
-            } catch (error) {
-                console.error("Failed to fetch dashboard data:", error)
-            } finally {
-                setLoading(false)
-            }
-        }
         fetchDashboard()
     }, [])
 
@@ -41,15 +47,19 @@ export default function DashboardPage() {
         if (!dashboardData) return {
             totalProjects: 0,
             totalEnquiries: 0,
-            totalBookings: 0,
-            pendingPayments: 0
+            cancelledEnquiries: 0,
+            propertiesBooked: 0,
+            propertiesAvailable: 0,
+            totalProperties: 0
         }
 
         return {
             totalProjects: dashboardData.totalProjects || 0,
             totalEnquiries: dashboardData.totalEnquiries || 0,
-            totalBookings: dashboardData.propertiesBooked || 0, // Mapping propertiesBooked to totalBookings
-            pendingPayments: 0, // Not provided in API
+            cancelledEnquiries: dashboardData.cancelledEnquiries || 0,
+            propertiesBooked: dashboardData.propertiesBooked || 0,
+            propertiesAvailable: dashboardData.propertiesAvailable || 0,
+            totalProperties: dashboardData.totalProperties || 0
         }
     }, [dashboardData])
 
@@ -61,7 +71,6 @@ export default function DashboardPage() {
             name: project.name,
             vacant: project.propertiesAvailable || 0,
             booked: project.propertiesBooked || 0,
-            registered: 0, // Not provided in API
         }))
     }, [dashboardData])
 
@@ -74,20 +83,16 @@ export default function DashboardPage() {
         }))
     }, [])
 
-    // Recent activity (Empty as not in API)
-    const recentActivity = useMemo(() => {
-        return []
-    }, [])
-
-    const activityColumns = [
-        { key: "timestamp", label: "Time", render: (val) => new Date(val).toLocaleTimeString() },
-        { key: "user", label: "User" },
-        { key: "action", label: "Action" },
-        { key: "entity", label: "Entity" },
-        { key: "details", label: "Details" },
+    const projectColumns = [
+        { key: "name", label: "Project Name" },
+        { key: "totalProperties", label: "Total Units" },
+        { key: "propertiesAvailable", label: "Available" },
+        { key: "propertiesBooked", label: "Booked" },
+        { key: "totalEnquiries", label: "Enquiries" },
+        { key: "cancelledEnquiries", label: "Cancelled" },
     ]
 
-    if (loading) {
+    if (loading && !dashboardData) {
         return (
             <AppLayout>
                 <div className="flex items-center justify-center h-screen">
@@ -289,9 +294,19 @@ export default function DashboardPage() {
                             Welcome back! Here's your real estate overview.
                         </p>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <Activity className="w-4 h-4" />
-                        <span>Last updated: {new Date().toLocaleTimeString()}</span>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <Activity className="w-4 h-4" />
+                            <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
+                        </div>
+                        <button
+                            onClick={fetchDashboard}
+                            disabled={refreshing}
+                            className={`p-2 rounded-full hover:bg-slate-100 transition-all ${refreshing ? 'animate-spin text-primary' : 'text-slate-500 hover:text-primary'}`}
+                            title="Refresh Dashboard"
+                        >
+                            <RefreshCw className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
 
@@ -313,7 +328,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                            <span className="text-xs text-slate-500">vs last month</span>
+                            <span className="text-xs text-slate-500">Across all locations</span>
                             <span className="trend-badge trend-up">
                                 <TrendingUp className="w-3 h-3" />
                                 <span>Active</span>
@@ -337,10 +352,10 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                            <span className="text-xs text-slate-500">growth rate</span>
+                            <span className="text-xs text-slate-500">{stats.cancelledEnquiries} cancelled</span>
                             <span className="trend-badge trend-up">
                                 <TrendingUp className="w-3 h-3" />
-                                <span>+12%</span>
+                                <span>Active</span>
                             </span>
                         </div>
                     </div>
@@ -353,23 +368,23 @@ export default function DashboardPage() {
                             </div>
                             <div className="text-right">
                                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                                    Total Bookings
+                                    Properties Booked
                                 </div>
                                 <div className="stat-value text-3xl md:text-4xl text-slate-900">
-                                    {stats.totalBookings}
+                                    {stats.propertiesBooked}
                                 </div>
                             </div>
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                            <span className="text-xs text-slate-500">conversion</span>
+                            <span className="text-xs text-slate-500">Total sold units</span>
                             <span className="trend-badge trend-up">
                                 <TrendingUp className="w-3 h-3" />
-                                <span>+8%</span>
+                                <span>Sold</span>
                             </span>
                         </div>
                     </div>
 
-                    {/* Pending Payments */}
+                    {/* Available Properties */}
                     <div className="stat-card-enhanced stat-card-4 bg-white rounded-xl p-5 md:p-6">
                         <div className="flex items-start justify-between mb-4">
                             <div className="stat-icon-wrapper" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' }}>
@@ -377,18 +392,18 @@ export default function DashboardPage() {
                             </div>
                             <div className="text-right">
                                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                                    Pending Payments
+                                    Properties Available
                                 </div>
                                 <div className="stat-value text-3xl md:text-4xl text-slate-900">
-                                    {stats.pendingPayments}
+                                    {stats.propertiesAvailable}
                                 </div>
                             </div>
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                            <span className="text-xs text-slate-500">outstanding</span>
-                            <span className="trend-badge trend-down">
-                                <TrendingUp className="w-3 h-3 rotate-180" />
-                                <span>-5%</span>
+                            <span className="text-xs text-slate-500">Ready for booking</span>
+                            <span className="trend-badge trend-up">
+                                <TrendingUp className="w-3 h-3" />
+                                <span>Open</span>
                             </span>
                         </div>
                     </div>
@@ -413,10 +428,6 @@ export default function DashboardPage() {
                                             <linearGradient id="bookedGradient" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="0%" stopColor="#6366f1" stopOpacity={0.9} />
                                                 <stop offset="100%" stopColor="#6366f1" stopOpacity={0.7} />
-                                            </linearGradient>
-                                            <linearGradient id="registeredGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.9} />
-                                                <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.7} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
@@ -444,9 +455,8 @@ export default function DashboardPage() {
                                             wrapperStyle={{ fontFamily: 'DM Sans', fontSize: '13px' }}
                                             iconType="circle"
                                         />
-                                        <Bar dataKey="vacant" fill="url(#vacantGradient)" radius={[6, 6, 0, 0]} />
-                                        <Bar dataKey="booked" fill="url(#bookedGradient)" radius={[6, 6, 0, 0]} />
-                                        <Bar dataKey="registered" fill="url(#registeredGradient)" radius={[6, 6, 0, 0]} />
+                                        <Bar name="Available" dataKey="vacant" fill="url(#vacantGradient)" radius={[6, 6, 0, 0]} />
+                                        <Bar name="Booked" dataKey="booked" fill="url(#bookedGradient)" radius={[6, 6, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -502,6 +512,25 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
+                {/* Project Overview Table */}
+                <div className="activity-card p-6 md:p-7">
+                    <h3 className="section-header text-lg md:text-xl mb-5">
+                        Project Performance
+                    </h3>
+                    <div className="overflow-x-auto -mx-4 md:mx-0">
+                        <div className="inline-block min-w-full px-4 md:px-0">
+                            {dashboardData?.projects?.length > 0 ? (
+                                <Table columns={projectColumns} data={dashboardData.projects} />
+                            ) : (
+                                <div className="empty-state">
+                                    <Building2 className="empty-state-icon" />
+                                    <p className="text-sm font-medium">No projects found</p>
+                                    <p className="text-xs mt-1">Add projects to see performance metrics</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </AppLayout>
     )
