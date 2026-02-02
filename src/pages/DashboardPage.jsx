@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import { AppLayout } from "../components/layout/AppLayout"
 import { Table } from "../components/ui/Table"
@@ -18,6 +19,7 @@ import {
 import { Users, Home, DollarSign, Building2, TrendingUp, Activity, Clock, RefreshCw } from "lucide-react"
 
 export default function DashboardPage() {
+    const navigate = useNavigate()
     const { user } = useAuth()
     const [dashboardData, setDashboardData] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -520,7 +522,11 @@ export default function DashboardPage() {
                     <div className="overflow-x-auto -mx-4 md:mx-0">
                         <div className="inline-block min-w-full px-4 md:px-0">
                             {dashboardData?.projects?.length > 0 ? (
-                                <Table columns={projectColumns} data={dashboardData.projects} />
+                                <Table
+                                    columns={projectColumns}
+                                    data={dashboardData.projects}
+                                    onRowClick={(project) => navigate(`/projects/${project.id}`)}
+                                />
                             ) : (
                                 <div className="empty-state">
                                     <Building2 className="empty-state-icon" />
