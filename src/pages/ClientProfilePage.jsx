@@ -685,14 +685,14 @@ export default function ClientProfilePage() {
                 </Card>
             ),
         },
-        {
-            label: `Bookings (${bookings.length})`,
-            content: (
-                <Card>
-                    <div className="text-center py-12 text-gray-500">No active bookings.</div>
-                </Card>
-            ),
-        }
+        // {
+        //     label: `Bookings (${bookings.length})`,
+        //     content: (
+        //         <Card>
+        //             <div className="text-center py-12 text-gray-500">No active bookings.</div>
+        //         </Card>
+        //     ),
+        // }
     ]
 
     return (
