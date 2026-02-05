@@ -52,7 +52,15 @@ export const apiClient = {
     }
 
     try {
-      const response = await fetch(url, { ...options, headers })
+      const response = await fetch(url, { 
+        ...options, 
+        headers, 
+        signal: AbortSignal.timeout(120000) // 2 minute timeout
+    })
+
+    if(response.status === 413) {
+        throw new Error("File size too large. Please upload a smaller file. and try again.")
+    }
 
       // 3. Handle 401 (Unauthorized)
       if (response.status === 401) {
