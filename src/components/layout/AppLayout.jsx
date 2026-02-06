@@ -138,20 +138,20 @@ export const AppLayout = ({ children }) => {
 
                     <div className="flex items-center gap-2 md:gap-4">
                         {/* Search - Hidden on mobile, shown on md and up */}
-                        <div className="relative hidden md:block">
+                        {/* <div className="relative hidden md:block">
                             <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search..."
                                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none text-sm"
                             />
-                        </div>
+                        </div> */}
 
                         {/* Notifications */}
-                        <button className="relative p-2 hover:bg-gray-100 rounded-lg flex-shrink-0">
+                        {/* <button className="relative p-2 hover:bg-gray-100 rounded-lg flex-shrink-0">
                             <Bell size={20} className="text-gray-600" />
                             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-                        </button>
+                        </button> */}
 
                         {/* User Menu */}
                         <div className="relative">

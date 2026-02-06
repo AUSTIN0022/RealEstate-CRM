@@ -33,7 +33,12 @@ export default function WingModal({
                             }
                         }}
                         value={wingForm.noOfFloors}
-                        onChange={(e) => setWingForm({ ...wingForm, noOfFloors: e.target.value })}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "" || (parseInt(val) >= 0 && !val.includes('-'))) {
+                                setWingForm({ ...wingForm, noOfFloors: val })
+                            }
+                        }}
                     />
                 </div>
                 <div className="col-span-1 flex items-center pt-6">
@@ -99,7 +104,12 @@ export default function WingModal({
                             min="1"
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none"
                             value={floorInput.area}
-                            onChange={(e) => setFloorInput({ ...floorInput, area: e.target.value })}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || (parseFloat(val) >= 0 && !val.includes('-'))) {
+                                    setFloorInput({ ...floorInput, area: val })
+                                }
+                            }}
                             onKeyDown={(e) => {
                                 if (e.key === '-' || e.key === 'e') {
                                     e.preventDefault();
@@ -115,7 +125,12 @@ export default function WingModal({
                             min="1"
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none"
                             value={floorInput.quantity}
-                            onChange={(e) => setFloorInput({ ...floorInput, quantity: e.target.value })}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || (parseInt(val) >= 0 && !val.includes('-'))) {
+                                    setFloorInput({ ...floorInput, quantity: val })
+                                }
+                            }}
                             onKeyDown={(e) => {
                                 if (e.key === '-' || e.key === 'e') {
                                     e.preventDefault();

@@ -28,34 +28,46 @@ export default function WingsTab({ project, projectId, onRefresh }) {
     // Floors State
     const [currentWingFloors, setCurrentWingFloors] = useState([])
     const [floorInput, setFloorInput] = useState({
-        floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: ""
+        floorNo: "", floorName: "", propertyType: "", property: "", area: "1", quantity: "1"
     })
     const [editingFloorIndex, setEditingFloorIndex] = useState(-1)
 
     // 1. Auto-generate floors
+    // 1. Auto-generate floors
     useEffect(() => {
-        if (wingModalOpen && !wingForm.manualFloorEntry && wingForm.noOfFloors && currentWingFloors.length === 0) {
+        if (wingModalOpen && !wingForm.manualFloorEntry && wingForm.noOfFloors !== "") {
             const count = parseInt(wingForm.noOfFloors) || 0
-            const autoFloors = []
-            for (let i = 0; i <= count; i++) {
-                autoFloors.push({
-                    floorNo: i.toString(),
-                    floorName: i === 0 ? "Ground Floor" : `Floor ${i}`,
-                    propertyType: "Residential",
-                    property: "2 BHK",
-                    area: "0",
-                    quantity: "0"
-                })
-            }
-            setCurrentWingFloors(autoFloors)
+            // We want floors from 0 to count (inclusive), so total floors = count + 1
+            const requiredLength = count + 1
+
+            setCurrentWingFloors(prev => {
+                if (prev.length === requiredLength) return prev;
+
+                if (prev.length > requiredLength) {
+                    return prev.slice(0, requiredLength);
+                } else {
+                    const newFloors = [...prev];
+                    for (let i = prev.length; i < requiredLength; i++) {
+                        newFloors.push({
+                            floorNo: i.toString(),
+                            floorName: i === 0 ? "Ground Floor" : `Floor ${i}`,
+                            propertyType: "Residential",
+                            property: "2 BHK",
+                            area: "1",
+                            quantity: "1"
+                        })
+                    }
+                    return newFloors;
+                }
+            })
         }
-    }, [wingForm.noOfFloors, wingForm.manualFloorEntry, wingModalOpen, currentWingFloors.length])
+    }, [wingForm.noOfFloors, wingForm.manualFloorEntry, wingModalOpen])
 
     // 2. Handlers
     const openAddWingModal = () => {
         setWingForm({ wingId: null, wingName: "", noOfFloors: "", manualFloorEntry: false })
         setCurrentWingFloors([])
-        setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
+        setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "1", quantity: "1" })
         setEditingFloorIndex(-1)
         setWingModalOpen(true)
     }
@@ -90,7 +102,7 @@ export default function WingsTab({ project, projectId, onRefresh }) {
         } else {
             setCurrentWingFloors([...currentWingFloors, newFloorData])
         }
-        setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
+        setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "1", quantity: "1" })
     }
 
     const handleEditFloorRow = (index) => {
@@ -103,7 +115,7 @@ export default function WingsTab({ project, projectId, onRefresh }) {
         setCurrentWingFloors(updated)
         if (editingFloorIndex === index) {
             setEditingFloorIndex(-1)
-            setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "", quantity: "" })
+            setFloorInput({ floorNo: "", floorName: "", propertyType: "", property: "", area: "1", quantity: "1" })
         }
     }
 

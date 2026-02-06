@@ -8,7 +8,7 @@ import { Badge } from "../components/ui/Badge"
 import { Modal } from "../components/ui/Modal"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
-import { FormTextarea } from "../components/ui/FormTextarea"
+
 import { Plus, Search, Filter, Loader2 } from "lucide-react" // Added Loader2
 import { enquiryService } from "../services/enquiryService"
 import { projectService } from "../services/projectService"
@@ -463,8 +463,13 @@ export default function EnquiryBookPage() {
                                 </div>
                             </div>
 
+
+                        </div>
+                    }
+                    rightColumn={
+                        <div className="space-y-6">
                             {/* Property Section */}
-                            <div className="pt-6 border-t border-gray-200">
+                            <div>
                                 <div className="flex items-center gap-2 mb-4">
                                     <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                                         <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -515,11 +520,8 @@ export default function EnquiryBookPage() {
                                     />
                                 </div>
                             </div>
-                        </div>
-                    }
-                    rightColumn={
-                        <div className="space-y-6">
-                            {/* ... (Enquiry Details Section remains same) ... */}
+
+                            {/* Enquiry Details Section */}
                             <div>
                                 <div className="flex items-center gap-2 mb-4">
                                     <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
@@ -550,28 +552,6 @@ export default function EnquiryBookPage() {
                                             onChange={(e) => setForm({ ...form, referenceName: e.target.value })}
                                         />
                                     </div>
-
-                                    <FormSelect
-                                        label="Status"
-                                        value={form.status}
-                                        onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                        options={[
-                                            { value: "ONGOING", label: "Ongoing" },
-                                            { value: "CANCELLED", label: "Cancelled" },
-                                            { value: "BOOKED", label: "Booked" },
-                                            { value: "HOT_LEAD", label: "Hot Lead" },
-                                            { value: "WARM_LEAD", label: "Warm Lead" },
-                                            { value: "COLD_LEAD", label: "Cold Lead" },
-                                        ]}
-                                    />
-
-                                    <FormTextarea
-                                        label="Remark"
-                                        value={form.remark}
-                                        onChange={(e) => setForm({ ...form, remark: e.target.value })}
-                                        rows={4}
-                                        placeholder="Add any additional notes or remarks..."
-                                    />
                                 </div>
                             </div>
                         </div>
