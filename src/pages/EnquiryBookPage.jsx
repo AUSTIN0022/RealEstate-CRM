@@ -26,7 +26,6 @@ export default function EnquiryBookPage() {
     const [filters, setFilters] = useState({ project: "", status: "" })
     const [editingId, setEditingId] = useState(null)
 
-    const [remarkText, setRemarkText] = useState("")
     const [selectedEnquiry, setSelectedEnquiry] = useState(null)
 
     const [propertyOptions, setPropertyOptions] = useState(null)
@@ -34,6 +33,7 @@ export default function EnquiryBookPage() {
 
     // --- NEW: Submitting state for loader ---
     const [submitting, setSubmitting] = useState(false)
+    const [errors, setErrors] = useState({})
 
     const [form, setForm] = useState({
         clientName: "",
@@ -185,19 +185,91 @@ export default function EnquiryBookPage() {
         }))
     }
 
+    const handleMobileChange = (e) => {
+        const value = e.target.value.replace(/\D/g, "")
+        if (value.length <= 10) {
+            setForm((prev) => ({ ...prev, mobileNumber: value }))
+            if (value.length === 10 && errors.mobileNumber) {
+                setErrors((prev) => ({ ...prev, mobileNumber: "" }))
+            }
+        }
+    }
+
+    const handleLandlineChange = (e) => {
+        const value = e.target.value.replace(/\D/g, "")
+        if (value.length <= 10) {
+            setForm((prev) => ({ ...prev, landlineNumber: value }))
+            if (value.length >= 3 && errors.landlineNumber) {
+                setErrors((prev) => ({ ...prev, landlineNumber: "" }))
+            }
+        }
+    }
+
+    const handleBlur = (field) => {
+        if (field === "email") {
+            if (form.email && !validateEmail(form.email)) {
+                setErrors((prev) => ({ ...prev, email: "Invalid email format" }))
+            } else {
+                setErrors((prev) => ({ ...prev, email: "" }))
+            }
+        }
+        if (field === "mobileNumber") {
+            if (form.mobileNumber && !validatePhone(form.mobileNumber)) {
+                setErrors((prev) => ({ ...prev, mobileNumber: "Mobile number must be 10 digits" }))
+            } else {
+                setErrors((prev) => ({ ...prev, mobileNumber: "" }))
+            }
+        }
+        if (field === "landlineNumber") {
+            if (form.landlineNumber && (form.landlineNumber.length < 3 || form.landlineNumber.length > 10)) {
+                setErrors((prev) => ({ ...prev, landlineNumber: "Landline must be between 3 and 10 digits" }))
+            } else {
+                setErrors((prev) => ({ ...prev, landlineNumber: "" }))
+            }
+        }
+        if (field === "clientName") {
+            if (!form.clientName || form.clientName.length < 3) {
+                setErrors((prev) => ({ ...prev, clientName: "Client Name must be at least 3 characters" }))
+            } else {
+                setErrors((prev) => ({ ...prev, clientName: "" }))
+            }
+        }
+        if (field === "address") {
+            if (form.address && form.address.length > 100) {
+                setErrors((prev) => ({ ...prev, address: "Address cannot exceed 100 characters" }))
+            } else {
+                setErrors((prev) => ({ ...prev, address: "" }))
+            }
+        }
+        if (field === "city") {
+            if (form.city && form.city.length > 50) {
+                setErrors((prev) => ({ ...prev, city: "City name too long" }))
+            } else {
+                setErrors((prev) => ({ ...prev, city: "" }))
+            }
+        }
+        if (field === "budget") {
+            if (form.budget && Number(form.budget) <= 0) {
+                setErrors((prev) => ({ ...prev, budget: "Budget must be greater than zero" }))
+            } else {
+                setErrors((prev) => ({ ...prev, budget: "" }))
+            }
+        }
+    }
+
     const handleAddEnquiry = async () => {
-        if (!form.clientName || !form.email || !form.mobileNumber) {
-            error("Please fill all required client fields")
-            return
-        }
+        // Run full validation on submit
+        const newErrors = {}
+        if (!form.clientName || form.clientName.length < 3) newErrors.clientName = "Client Name must be at least 3 characters"
+        if (!form.email || !validateEmail(form.email)) newErrors.email = "Invalid email format"
+        if (!form.mobileNumber || !validatePhone(form.mobileNumber)) newErrors.mobileNumber = "Mobile number must be 10 digits"
+        if (form.landlineNumber && (form.landlineNumber.length < 3 || form.landlineNumber.length > 10)) newErrors.landlineNumber = "Landline must be between 3 and 10 digits"
+        if (form.address && form.address.length > 100) newErrors.address = "Address cannot exceed 100 characters"
+        if (form.budget && Number(form.budget) <= 0) newErrors.budget = "Budget must be greater than zero"
 
-        if (!validateEmail(form.email)) {
-            error("Invalid email format")
-            return
-        }
-
-        if (!validatePhone(form.mobileNumber)) {
-            error("Mobile number must be 10 digits")
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors)
+            error("Please fix the errors in the form")
             return
         }
 
@@ -413,7 +485,12 @@ export default function EnquiryBookPage() {
                                     <FormInput
                                         label="Client Name"
                                         value={form.clientName}
-                                        onChange={(e) => setForm({ ...form, clientName: e.target.value })}
+                                        onChange={(e) => {
+                                            setForm({ ...form, clientName: e.target.value })
+                                            if (errors.clientName) setErrors({ ...errors, clientName: "" })
+                                        }}
+                                        onBlur={() => handleBlur("clientName")}
+                                        error={errors.clientName}
                                         required
                                     />
                                     <div className="grid grid-cols-2 gap-4">
@@ -421,31 +498,49 @@ export default function EnquiryBookPage() {
                                             label="Email"
                                             type="email"
                                             value={form.email}
-                                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                            onChange={(e) => {
+                                                setForm({ ...form, email: e.target.value })
+                                                if (errors.email) setErrors({ ...errors, email: "" })
+                                            }}
+                                            onBlur={() => handleBlur("email")}
+                                            error={errors.email}
                                             required
                                         />
                                         <FormInput
                                             label="Mobile"
                                             value={form.mobileNumber}
-                                            onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
+                                            onChange={handleMobileChange}
+                                            onBlur={() => handleBlur("mobileNumber")}
+                                            error={errors.mobileNumber}
                                             required
+                                            maxLength={10}
                                         />
                                     </div>
                                     <FormInput
                                         label="Landline"
                                         value={form.landlineNumber}
-                                        onChange={(e) => setForm({ ...form, landlineNumber: e.target.value })}
+                                        onChange={handleLandlineChange}
+                                        onBlur={() => handleBlur("landlineNumber")}
+                                        error={errors.landlineNumber}
+                                        placeholder="Min 3 digits"
                                     />
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormInput
                                             label="City"
                                             value={form.city}
                                             onChange={(e) => setForm({ ...form, city: e.target.value })}
+                                            onBlur={() => handleBlur("city")}
+                                            error={errors.city}
                                         />
                                         <FormInput
                                             label="Address"
                                             value={form.address}
-                                            onChange={(e) => setForm({ ...form, address: e.target.value })}
+                                            onChange={(e) => {
+                                                setForm({ ...form, address: e.target.value })
+                                                if (errors.address) setErrors({ ...errors, address: "" })
+                                            }}
+                                            onBlur={() => handleBlur("address")}
+                                            error={errors.address}
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -535,9 +630,16 @@ export default function EnquiryBookPage() {
                                 <div className="space-y-4">
                                     <FormInput
                                         label="Budget"
+                                        type="number"
                                         value={form.budget}
-                                        onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                                        onChange={(e) => {
+                                            setForm({ ...form, budget: e.target.value })
+                                            if (errors.budget) setErrors({ ...errors, budget: "" })
+                                        }}
+                                        onBlur={() => handleBlur("budget")}
+                                        error={errors.budget}
                                         required
+                                        min="0"
                                     />
 
                                     <div className="grid grid-cols-2 gap-4">

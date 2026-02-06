@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, lazy, Suspense } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import { AppLayout } from "../components/layout/AppLayout"
 import { Table } from "../components/ui/Table"
 import { dashboardService } from "../services/dashboardService"
+import ErrorBoundary from "../components/common/ErrorBoundary"
+
+const MonthlyEnquiriesChart = lazy(() => import("../components/dashboard/MonthlyEnquiriesChart"))
 import {
     BarChart,
     Bar,
@@ -76,15 +79,7 @@ export default function DashboardPage() {
         }))
     }, [dashboardData])
 
-    // Chart data - Monthly enquiries (Mock/Random as original)
-    const monthlyEnquiriesData = useMemo(() => {
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        return months.map((month) => ({
-            month,
-            enquiries: Math.floor(Math.random() * 20) + 5,
-        }))
-    }, [])
-
+    // Calculate statistics from dashboardData
     const projectColumns = [
         { key: "name", label: "Project Name" },
         { key: "totalProperties", label: "Total Units" },
@@ -466,52 +461,16 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Monthly Enquiries Chart */}
-                    <div className="chart-card p-6 md:p-7">
-                        <h3 className="section-header text-lg md:text-xl mb-5">
-                            Monthly Enquiries
-                        </h3>
-                        <div className="overflow-x-auto -mx-3 md:mx-0">
-                            <div className="min-h-[280px] md:min-h-[320px] px-3 md:px-0">
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <LineChart data={monthlyEnquiriesData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
-                                        <defs>
-                                            <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                                                <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                                        <XAxis
-                                            dataKey="month"
-                                            tick={{ fontSize: 12, fill: '#64748b', fontFamily: 'DM Sans' }}
-                                            stroke="#cbd5e1"
-                                        />
-                                        <YAxis
-                                            tick={{ fontSize: 12, fill: '#64748b', fontFamily: 'DM Sans' }}
-                                            stroke="#cbd5e1"
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                borderRadius: '8px',
-                                                border: '1px solid #e2e8f0',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                                                fontFamily: 'DM Sans'
-                                            }}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="enquiries"
-                                            stroke="#6366f1"
-                                            strokeWidth={3}
-                                            dot={{ fill: '#6366f1', r: 5, strokeWidth: 2, stroke: '#fff' }}
-                                            activeDot={{ r: 7, strokeWidth: 2 }}
-                                            fill="url(#lineGradient)"
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
+
+                    <ErrorBoundary>
+                        <Suspense fallback={
+                            <div className="chart-card p-6 md:p-7 flex items-center justify-center min-h-[380px]">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
-                        </div>
-                    </div>
+                        }>
+                            <MonthlyEnquiriesChart />
+                        </Suspense>
+                    </ErrorBoundary>
                 </div>
 
                 {/* Project Overview Table */}
