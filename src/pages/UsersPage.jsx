@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { validateEmail, validatePhone } from "../utils/helpers"
 import { useData } from "../contexts/DataContext"
 import { useToast } from "../components/ui/Toast"
 import { useAuth } from "../contexts/AuthContext"
@@ -110,6 +111,16 @@ export default function UsersPage() {
             return
         }
 
+        if (!validateEmail(form.email)) {
+            error("Please enter a valid email address")
+            return
+        }
+
+        if (form.mobileNumber && !validatePhone(form.mobileNumber)) {
+            error("Mobile number must be 10 digits")
+            return
+        }
+
         if (!form.projectIds || form.projectIds.length === 0) {
             error("Please assign at least one project")
             return
@@ -141,6 +152,16 @@ export default function UsersPage() {
     const handleUpdateUser = async () => {
         if (!form.username || !form.fullName || !form.email) {
             error("Please fill all required fields")
+            return
+        }
+
+        if (!validateEmail(form.email)) {
+            error("Please enter a valid email address")
+            return
+        }
+
+        if (form.mobileNumber && !validatePhone(form.mobileNumber)) {
+            error("Mobile number must be 10 digits")
             return
         }
 
@@ -277,7 +298,12 @@ export default function UsersPage() {
                         <FormInput
                             label="Mobile Number"
                             value={form.mobileNumber}
-                            onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
+                            onChange={(e) => {
+                                const val = e.target.value
+                                if (/^\d*$/.test(val) && val.length <= 10) {
+                                    setForm({ ...form, mobileNumber: val })
+                                }
+                            }}
                             disabled={isSubmitting}
                         />
 

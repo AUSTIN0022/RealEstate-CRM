@@ -6,8 +6,10 @@ import { useToast } from "../../../components/ui/Toast"
 import { Edit, Building2, Home, Users, XCircle, Calendar, TrendingUp, CheckCircle } from "lucide-react"
 import { formatDate } from "../../../utils/helpers"
 import { projectService } from "../../../services/projectService"
+import { useAuth } from "../../../contexts/AuthContext"
 
 export default function OverviewTab({ project, projectId, onUpdate }) {
+    const { user } = useAuth()
     const { success, error: toastError } = useToast()
     const [isEditingBasic, setIsEditingBasic] = useState(false)
 
@@ -289,19 +291,21 @@ export default function OverviewTab({ project, projectId, onUpdate }) {
             <Card>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                     <h3 className="text-lg font-semibold text-gray-900">Basic Details</h3>
-                    {!isEditingBasic ? (
-                        <Button variant="outline" size="sm" onClick={() => setIsEditingBasic(true)}>
-                            <Edit size={16} className="mr-2" /> Edit
-                        </Button>
-                    ) : (
-                        <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => setIsEditingBasic(false)}>
-                                Cancel
+                    {user?.role === "ADMIN" && (
+                        !isEditingBasic ? (
+                            <Button variant="outline" size="sm" onClick={() => setIsEditingBasic(true)}>
+                                <Edit size={16} className="mr-2" /> Edit
                             </Button>
-                            <Button variant="primary" size="sm" onClick={handleUpdateBasicInfo}>
-                                Save
-                            </Button>
-                        </div>
+                        ) : (
+                            <div className="flex gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => setIsEditingBasic(false)}>
+                                    Cancel
+                                </Button>
+                                <Button variant="primary" size="sm" onClick={handleUpdateBasicInfo}>
+                                    Save
+                                </Button>
+                            </div>
+                        )
                     )}
                 </div>
 

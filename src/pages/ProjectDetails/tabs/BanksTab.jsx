@@ -5,8 +5,10 @@ import { FormInput } from "../../../components/ui/FormInput"
 import { useToast } from "../../../components/ui/Toast"
 import { Plus, Edit, Trash2 } from "lucide-react"
 import { projectService } from "../../../services/projectService"
+import { useAuth } from "../../../contexts/AuthContext"
 
 export default function BanksTab({ banks, projectId, onRefresh }) {
+    const { user } = useAuth()
     const { success, error: toastError } = useToast()
 
     const [isAddingBank, setIsAddingBank] = useState(false)
@@ -58,20 +60,22 @@ export default function BanksTab({ banks, projectId, onRefresh }) {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Approved Banks</h3>
-                <Button
-                    onClick={() => {
-                        setEditingBankId(null)
-                        setBankForm({
-                            bankName: "",
-                            branchName: "",
-                            contactPerson: "",
-                            contactNumber: "",
-                        })
-                        setIsAddingBank(true)
-                    }}
-                >
-                    <Plus size={18} className="mr-2" /> Add Bank
-                </Button>
+                {user?.role === "ADMIN" && (
+                    <Button
+                        onClick={() => {
+                            setEditingBankId(null)
+                            setBankForm({
+                                bankName: "",
+                                branchName: "",
+                                contactPerson: "",
+                                contactNumber: "",
+                            })
+                            setIsAddingBank(true)
+                        }}
+                    >
+                        <Plus size={18} className="mr-2" /> Add Bank
+                    </Button>
+                )}
             </div>
 
             {isAddingBank && (
@@ -140,37 +144,39 @@ export default function BanksTab({ banks, projectId, onRefresh }) {
                         <Card key={bank.bankProjectId || bank.id}>
                             <div className="flex justify-between items-start mb-2">
                                 <h4 className="font-bold text-lg">{bank.bankName}</h4>
-                                <div className="flex gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            const idToEdit = bank.bankProjectId
-                                            if (!idToEdit) {
-                                                toastError("Error: Bank ID missing")
-                                                return
-                                            }
-                                            setEditingBankId(idToEdit)
-                                            setBankForm({
-                                                bankName: bank.bankName,
-                                                branchName: bank.branchName,
-                                                contactPerson: bank.contactPerson || "",
-                                                contactNumber: bank.contactNumber || "",
-                                            })
-                                            setIsAddingBank(true)
-                                        }}
-                                    >
-                                        <Edit size={16} />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-red-500 hover:text-red-700"
-                                        onClick={() => handleDeleteBank(bank.bankProjectId)}
-                                    >
-                                        <Trash2 size={16} />
-                                    </Button>
-                                </div>
+                                {user?.role === "ADMIN" && (
+                                    <div className="flex gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                const idToEdit = bank.bankProjectId
+                                                if (!idToEdit) {
+                                                    toastError("Error: Bank ID missing")
+                                                    return
+                                                }
+                                                setEditingBankId(idToEdit)
+                                                setBankForm({
+                                                    bankName: bank.bankName,
+                                                    branchName: bank.branchName,
+                                                    contactPerson: bank.contactPerson || "",
+                                                    contactNumber: bank.contactNumber || "",
+                                                })
+                                                setIsAddingBank(true)
+                                            }}
+                                        >
+                                            <Edit size={16} />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-red-500 hover:text-red-700"
+                                            onClick={() => handleDeleteBank(bank.bankProjectId)}
+                                        >
+                                            <Trash2 size={16} />
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                             <p className="text-sm text-gray-600">{bank.branchName}</p>
                             <div className="mt-3 pt-3 border-t border-gray-100 text-sm">

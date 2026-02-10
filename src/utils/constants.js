@@ -1,4 +1,3 @@
-// import { seedData } from "../data/seedData"
 
 export const ROLES = {
     ADMIN: "ADMIN",

@@ -4,8 +4,10 @@ import { FormInput } from "../../../components/ui/FormInput" // Ensure this is i
 import { useToast } from "../../../components/ui/Toast"
 import { Edit, Plus, Trash2, Save, X } from "lucide-react"
 import { projectService } from "../../../services/projectService"
+import { useAuth } from "../../../contexts/AuthContext"
 
 export default function PaymentStagesTab({ disbursements, projectId, onRefresh }) {
+    const { user } = useAuth()
     const [isEditingDisbursements, setIsEditingDisbursements] = useState(false)
     const [disbursementForm, setDisbursementForm] = useState([])
     const [saving, setSaving] = useState(false)
@@ -77,23 +79,25 @@ export default function PaymentStagesTab({ disbursements, projectId, onRefresh }
                 <h3 className="text-lg font-semibold">Payment Stages</h3>
 
                 {/* Toggle Buttons */}
-                {!isEditingDisbursements ? (
-                    <Button onClick={handleEditClick} size="sm" variant="outline">
-                        <Edit size={16} className="mr-2" /> Edit Stages
-                    </Button>
-                ) : (
-                    <div className="flex gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsEditingDisbursements(false)}
-                        >
-                            <X size={16} className="mr-2" /> Cancel
+                {user?.role === "ADMIN" && (
+                    !isEditingDisbursements ? (
+                        <Button onClick={handleEditClick} size="sm" variant="outline">
+                            <Edit size={16} className="mr-2" /> Edit Stages
                         </Button>
-                        <Button variant="primary" size="sm" onClick={handleSave} loading={saving}>
-                            <Save size={16} className="mr-2" /> Save
-                        </Button>
-                    </div>
+                    ) : (
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsEditingDisbursements(false)}
+                            >
+                                <X size={16} className="mr-2" /> Cancel
+                            </Button>
+                            <Button variant="primary" size="sm" onClick={handleSave} loading={saving}>
+                                <Save size={16} className="mr-2" /> Save
+                            </Button>
+                        </div>
+                    )
                 )}
             </div>
 

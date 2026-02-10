@@ -5,11 +5,13 @@ import { Modal } from "../../../components/ui/Modal"
 import { useToast } from "../../../components/ui/Toast"
 import { Plus, Building2, Eye, Edit, Trash2 } from "lucide-react"
 import { projectService } from "../../../services/projectService"
+import { useAuth } from "../../../contexts/AuthContext"
 
 // Adjusted path to reach the Registration folder
 import WingModal from "../../Registration/modals/WingModal"
 
 export default function WingsTab({ project, projectId, onRefresh }) {
+    const { user } = useAuth()
     const { success, error: toastError } = useToast()
 
     // Modal States
@@ -173,9 +175,11 @@ export default function WingsTab({ project, projectId, onRefresh }) {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Wings Configuration</h3>
-                <Button onClick={openAddWingModal} className="w-full sm:w-auto">
-                    <Plus size={18} className="mr-2" /> Add Wing
-                </Button>
+                {user?.role === "ADMIN" && (
+                    <Button onClick={openAddWingModal} className="w-full sm:w-auto">
+                        <Plus size={18} className="mr-2" /> Add Wing
+                    </Button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -205,25 +209,29 @@ export default function WingsTab({ project, projectId, onRefresh }) {
                                 >
                                     <Eye size={18} />
                                 </button>
-                                <button
-                                    onClick={() => openEditWingModal(wing)}
-                                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                    title="Edit Wing"
-                                >
-                                    <Edit size={18} />
-                                </button>
-                                <button
-                                    onClick={() => handleDeleteWing(wing.id || wing.wingId)}
-                                    className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                                    title="Delete Wing"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
+                                {user?.role === "ADMIN" && (
+                                    <>
+                                        <button
+                                            onClick={() => openEditWingModal(wing)}
+                                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                            title="Edit Wing"
+                                        >
+                                            <Edit size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteWing(wing.id || wing.wingId)}
+                                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                                            title="Delete Wing"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </Card>
                 ))}
-                {(!project.wings || project.wings.length === 0) && (
+                {user?.role === "ADMIN" && (!project.wings || project.wings.length === 0) && (
                     <div className="col-span-full text-center py-10 bg-gray-50 rounded-lg border border-dashed text-gray-500">
                         No wings added yet. Click "Add Wing" to get started.
                     </div>
