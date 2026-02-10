@@ -319,7 +319,7 @@ export function useRegistrationForm() {
 
     return {
         currentStep, steps, isSubmitting,
-        handleNext, handlePrev, handleSubmit,
+        handleNext, handlePrev, goToStep: setCurrentStep, handleSubmit,
         basicInfo, setBasicInfo,
         wings, handleOpenAddWing, handleDeleteWing, handleEditWing,
         showWingModal, setShowWingModal, handleSaveWing,

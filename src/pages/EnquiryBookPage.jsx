@@ -221,7 +221,9 @@ export default function EnquiryBookPage() {
             }
         }
         if (field === "landlineNumber") {
-            if (form.landlineNumber && (form.landlineNumber.length < 3 || form.landlineNumber.length > 10)) {
+            if (!form.landlineNumber) {
+                setErrors((prev) => ({ ...prev, landlineNumber: "Landline is required" }))
+            } else if (form.landlineNumber.length < 3 || form.landlineNumber.length > 10) {
                 setErrors((prev) => ({ ...prev, landlineNumber: "Landline must be between 3 and 10 digits" }))
             } else {
                 setErrors((prev) => ({ ...prev, landlineNumber: "" }))
@@ -235,17 +237,35 @@ export default function EnquiryBookPage() {
             }
         }
         if (field === "address") {
-            if (form.address && form.address.length > 100) {
+            if (!form.address) {
+                setErrors((prev) => ({ ...prev, address: "Address is required" }))
+            } else if (form.address.length > 100) {
                 setErrors((prev) => ({ ...prev, address: "Address cannot exceed 100 characters" }))
             } else {
                 setErrors((prev) => ({ ...prev, address: "" }))
             }
         }
         if (field === "city") {
-            if (form.city && form.city.length > 50) {
+            if (!form.city) {
+                setErrors((prev) => ({ ...prev, city: "City is required" }))
+            } else if (form.city.length > 50) {
                 setErrors((prev) => ({ ...prev, city: "City name too long" }))
             } else {
                 setErrors((prev) => ({ ...prev, city: "" }))
+            }
+        }
+        if (field === "occupation") {
+            if (!form.occupation) {
+                setErrors((prev) => ({ ...prev, occupation: "Occupation is required" }))
+            } else {
+                setErrors((prev) => ({ ...prev, occupation: "" }))
+            }
+        }
+        if (field === "company") {
+            if (!form.company) {
+                setErrors((prev) => ({ ...prev, company: "Company is required" }))
+            } else {
+                setErrors((prev) => ({ ...prev, company: "" }))
             }
         }
         if (field === "budget") {
@@ -253,6 +273,20 @@ export default function EnquiryBookPage() {
                 setErrors((prev) => ({ ...prev, budget: "Budget must be greater than zero" }))
             } else {
                 setErrors((prev) => ({ ...prev, budget: "" }))
+            }
+        }
+        if (field === "reference") {
+            if (!form.reference) {
+                setErrors((prev) => ({ ...prev, reference: "Reference is required" }))
+            } else {
+                setErrors((prev) => ({ ...prev, reference: "" }))
+            }
+        }
+        if (field === "referenceName") {
+            if (!form.referenceName) {
+                setErrors((prev) => ({ ...prev, referenceName: "Reference Name is required" }))
+            } else {
+                setErrors((prev) => ({ ...prev, referenceName: "" }))
             }
         }
     }
@@ -263,9 +297,32 @@ export default function EnquiryBookPage() {
         if (!form.clientName || form.clientName.length < 3) newErrors.clientName = "Client Name must be at least 3 characters"
         if (!form.email || !validateEmail(form.email)) newErrors.email = "Invalid email format"
         if (!form.mobileNumber || !validatePhone(form.mobileNumber)) newErrors.mobileNumber = "Mobile number must be 10 digits"
-        if (form.landlineNumber && (form.landlineNumber.length < 3 || form.landlineNumber.length > 10)) newErrors.landlineNumber = "Landline must be between 3 and 10 digits"
-        if (form.address && form.address.length > 100) newErrors.address = "Address cannot exceed 100 characters"
+
+        // Landline required
+        if (!form.landlineNumber) newErrors.landlineNumber = "Landline is required"
+        else if (form.landlineNumber.length < 3 || form.landlineNumber.length > 10) newErrors.landlineNumber = "Landline must be between 3 and 10 digits"
+
+        // City required
+        if (!form.city) newErrors.city = "City is required"
+        else if (form.city.length > 50) newErrors.city = "City name too long"
+
+        // Address required
+        if (!form.address) newErrors.address = "Address is required"
+        else if (form.address.length > 100) newErrors.address = "Address cannot exceed 100 characters"
+
+        // Occupation required
+        if (!form.occupation) newErrors.occupation = "Occupation is required"
+
+        // Company required
+        if (!form.company) newErrors.company = "Company is required"
+
         if (form.budget && Number(form.budget) <= 0) newErrors.budget = "Budget must be greater than zero"
+
+        // Reference required
+        if (!form.reference) newErrors.reference = "Reference is required"
+
+        // Reference Name required
+        if (!form.referenceName) newErrors.referenceName = "Reference Name is required"
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors)
@@ -523,14 +580,19 @@ export default function EnquiryBookPage() {
                                         onBlur={() => handleBlur("landlineNumber")}
                                         error={errors.landlineNumber}
                                         placeholder="Min 3 digits"
+                                        required
                                     />
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormInput
                                             label="City"
                                             value={form.city}
-                                            onChange={(e) => setForm({ ...form, city: e.target.value })}
+                                            onChange={(e) => {
+                                                setForm({ ...form, city: e.target.value })
+                                                if (errors.city) setErrors({ ...errors, city: "" })
+                                            }}
                                             onBlur={() => handleBlur("city")}
                                             error={errors.city}
+                                            required
                                         />
                                         <FormInput
                                             label="Address"
@@ -541,18 +603,31 @@ export default function EnquiryBookPage() {
                                             }}
                                             onBlur={() => handleBlur("address")}
                                             error={errors.address}
+                                            required
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormInput
                                             label="Occupation"
                                             value={form.occupation}
-                                            onChange={(e) => setForm({ ...form, occupation: e.target.value })}
+                                            onChange={(e) => {
+                                                setForm({ ...form, occupation: e.target.value })
+                                                if (errors.occupation) setErrors({ ...errors, occupation: "" })
+                                            }}
+                                            onBlur={() => handleBlur("occupation")}
+                                            error={errors.occupation}
+                                            required
                                         />
                                         <FormInput
                                             label="Company"
                                             value={form.company}
-                                            onChange={(e) => setForm({ ...form, company: e.target.value })}
+                                            onChange={(e) => {
+                                                setForm({ ...form, company: e.target.value })
+                                                if (errors.company) setErrors({ ...errors, company: "" })
+                                            }}
+                                            onBlur={() => handleBlur("company")}
+                                            error={errors.company}
+                                            required
                                         />
                                     </div>
                                 </div>
@@ -636,6 +711,12 @@ export default function EnquiryBookPage() {
                                             setForm({ ...form, budget: e.target.value })
                                             if (errors.budget) setErrors({ ...errors, budget: "" })
                                         }}
+                                        onKeyDown={(e) => {
+                                            // Prevent e, E, +, -
+                                            if (["e", "E", "+", "-"].includes(e.key)) {
+                                                e.preventDefault()
+                                            }
+                                        }}
                                         onBlur={() => handleBlur("budget")}
                                         error={errors.budget}
                                         required
@@ -646,12 +727,24 @@ export default function EnquiryBookPage() {
                                         <FormInput
                                             label="Reference"
                                             value={form.reference}
-                                            onChange={(e) => setForm({ ...form, reference: e.target.value })}
+                                            onChange={(e) => {
+                                                setForm({ ...form, reference: e.target.value })
+                                                if (errors.reference) setErrors({ ...errors, reference: "" })
+                                            }}
+                                            onBlur={() => handleBlur("reference")}
+                                            error={errors.reference}
+                                            required
                                         />
                                         <FormInput
                                             label="Reference Name"
                                             value={form.referenceName}
-                                            onChange={(e) => setForm({ ...form, referenceName: e.target.value })}
+                                            onChange={(e) => {
+                                                setForm({ ...form, referenceName: e.target.value })
+                                                if (errors.referenceName) setErrors({ ...errors, referenceName: "" })
+                                            }}
+                                            onBlur={() => handleBlur("referenceName")}
+                                            error={errors.referenceName}
+                                            required
                                         />
                                     </div>
                                 </div>
