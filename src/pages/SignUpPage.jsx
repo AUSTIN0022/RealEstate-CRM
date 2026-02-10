@@ -1,8 +1,7 @@
-"use client"
-
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { authService } from "../services/authService"
+import { validateEmail, validatePhone } from "../utils/helpers"
 
 // Define initial empty structure to replace seedData
 const INITIAL_DATA_STRUCTURE = {
@@ -58,6 +57,21 @@ export default function SignUpPage() {
                 setError("Please fill in all fields")
                 return
             }
+        }
+
+        if (!validateEmail(formData.orgEmail)) {
+            setError("Please enter a valid organization email")
+            return
+        }
+
+        if (!validateEmail(formData.email)) {
+            setError("Please enter a valid personal email")
+            return
+        }
+
+        if (!validatePhone(formData.mobileNo)) {
+            setError("Please enter a valid 10-digit mobile number")
+            return
         }
 
         setLoading(true)

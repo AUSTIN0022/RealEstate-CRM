@@ -172,7 +172,7 @@ export default function LoginPage() {
                         )}
 
                         {/* Remember Me & Forgot Password */}
-                        <div className="flex items-center justify-between">
+                        {/* <div className="flex items-center justify-between">
                             <label className="flex items-center cursor-pointer group">
                                 <input
                                     type="checkbox"
@@ -192,9 +192,8 @@ export default function LoginPage() {
                             >
                                 Forgot password?
                             </button>
-                        </div>
+                        </div> */}
 
-                        {/* Submit Button */}
                         <button
                             onClick={handleSubmit}
                             disabled={loading}
