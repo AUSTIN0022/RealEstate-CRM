@@ -221,9 +221,7 @@ export default function EnquiryBookPage() {
             }
         }
         if (field === "landlineNumber") {
-            if (!form.landlineNumber) {
-                setErrors((prev) => ({ ...prev, landlineNumber: "Landline is required" }))
-            } else if (form.landlineNumber.length < 3 || form.landlineNumber.length > 10) {
+            if (form.landlineNumber && (form.landlineNumber.length < 3 || form.landlineNumber.length > 10)) {
                 setErrors((prev) => ({ ...prev, landlineNumber: "Landline must be between 3 and 10 digits" }))
             } else {
                 setErrors((prev) => ({ ...prev, landlineNumber: "" }))
@@ -298,9 +296,10 @@ export default function EnquiryBookPage() {
         if (!form.email || !validateEmail(form.email)) newErrors.email = "Invalid email format"
         if (!form.mobileNumber || !validatePhone(form.mobileNumber)) newErrors.mobileNumber = "Mobile number must be 10 digits"
 
-        // Landline required
-        if (!form.landlineNumber) newErrors.landlineNumber = "Landline is required"
-        else if (form.landlineNumber.length < 3 || form.landlineNumber.length > 10) newErrors.landlineNumber = "Landline must be between 3 and 10 digits"
+        // Landline optional
+        if (form.landlineNumber && (form.landlineNumber.length < 3 || form.landlineNumber.length > 10)) {
+            newErrors.landlineNumber = "Landline must be between 3 and 10 digits"
+        }
 
         // City required
         if (!form.city) newErrors.city = "City is required"
@@ -580,7 +579,6 @@ export default function EnquiryBookPage() {
                                         onBlur={() => handleBlur("landlineNumber")}
                                         error={errors.landlineNumber}
                                         placeholder="Min 3 digits"
-                                        required
                                     />
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormInput

@@ -14,7 +14,8 @@ import { Modal } from "../components/ui/Modal"
 import { FormInput } from "../components/ui/FormInput"
 import { FormSelect } from "../components/ui/FormSelect"
 import { SkeletonLoader } from "../components/ui/SkeletonLoader"
-import { Plus, Pencil, Loader2 } from "lucide-react"
+import { Plus, Pencil, Loader2, Trash2 } from "lucide-react"
+import { ConfirmDialog } from "../components/ui/ConfirmDialog"
 
 export default function UsersPage() {
     const { user } = useAuth()
@@ -31,6 +32,8 @@ export default function UsersPage() {
     // Edit Mode States
     const [isEditing, setIsEditing] = useState(false)
     const [selectedUserId, setSelectedUserId] = useState(null)
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+    const [userToDelete, setUserToDelete] = useState(null)
 
     const initialFormState = {
         username: "",
@@ -200,6 +203,26 @@ export default function UsersPage() {
         }
     }
 
+    const handleDeleteClick = (user) => {
+        setUserToDelete(user)
+        setDeleteModalOpen(true)
+    }
+
+    const confirmDeleteUser = async () => {
+        if (!userToDelete) return
+
+        try {
+            await userService.deleteUser(userToDelete.userId || userToDelete.id)
+            success("User deleted successfully")
+            await fetchUsers()
+            setDeleteModalOpen(false)
+            setUserToDelete(null)
+        } catch (err) {
+            console.error("Failed to delete user:", err)
+            error("Failed to delete user")
+        }
+    }
+
     const columns = [
         { key: "fullName", label: "Name" },
         { key: "email", label: "Email" },
@@ -217,14 +240,24 @@ export default function UsersPage() {
             key: "actions",
             label: "Actions",
             render: (_, row) => (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenEditModal(row)}
-                    className="text-gray-600 hover:text-indigo-600"
-                >
-                    <Pencil size={16} />
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenEditModal(row)}
+                        className="text-gray-600 hover:text-indigo-600"
+                    >
+                        <Pencil size={16} />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteClick(row)}
+                        className="text-red-600 hover:text-red-800"
+                    >
+                        <Trash2 size={16} />
+                    </Button>
+                </div>
             )
         }
     ]
@@ -392,6 +425,16 @@ export default function UsersPage() {
                     </div>
                 </Modal>
             </div>
+
+            <ConfirmDialog
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={confirmDeleteUser}
+                title="Delete User"
+                message={`Are you sure you want to delete ${userToDelete?.fullName}? This action cannot be undone.`}
+                confirmText="Delete"
+                isDangerous={true}
+            />
         </AppLayout>
     )
 }
