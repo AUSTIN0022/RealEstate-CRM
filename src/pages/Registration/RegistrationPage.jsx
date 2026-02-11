@@ -28,7 +28,7 @@ export default function RegistrationPage() {
         basicInfo, setBasicInfo,
 
         // Wings
-        wings, handleOpenAddWing, handleDeleteWing, handleEditWing, // <--- Destructured here
+        wings, handleOpenAddWing, handleDeleteWing, handleEditWing, handleDuplicateWing, // <--- Destructured here
         showWingModal, setShowWingModal, handleSaveWing,
         wingForm, setWingForm, currentWingFloors,
         floorInput, setFloorInput, editingFloorIndex,
@@ -61,7 +61,8 @@ export default function RegistrationPage() {
                     wings={wings}
                     onAddWing={handleOpenAddWing}
                     onDeleteWing={handleDeleteWing}
-                    onEditWing={handleEditWing} // <--- Passed here
+                    onEditWing={handleEditWing}
+                    onDuplicateWing={handleDuplicateWing} // <--- Passed here
                 />
             )
             case 2: return <StepBanks banks={banks} setBanks={setBanks} onOpenModal={() => setShowBankModal(true)} />

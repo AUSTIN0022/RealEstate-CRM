@@ -180,6 +180,19 @@ export function useRegistrationForm() {
     const handleDeleteWing = (id) => setWings(wings.filter(w => w.wingId !== id))
 
     // --- NAVIGATION & VALIDATION ---
+    const handleDuplicateWing = (wing) => {
+        setWingForm({
+            wingId: null, // Ensure a new ID is generated on save
+            wingName: `${wing.wingName} (Copy)`,
+            noOfFloors: wing.noOfFloors,
+            manualFloorEntry: true // Preserve manual configuration
+        })
+        // Deep copy floors to avoid reference issues
+        setCurrentWingFloors(JSON.parse(JSON.stringify(wing.floors)))
+        setShowWingModal(true)
+    }
+
+    // --- NAVIGATION & VALIDATION ---
     const validateStep = () => {
         if (currentStep === 0) {
             if (!basicInfo.projectName || !basicInfo.mahareraNo || !basicInfo.startDate || !basicInfo.completionDate) {
@@ -321,7 +334,7 @@ export function useRegistrationForm() {
         currentStep, steps, isSubmitting,
         handleNext, handlePrev, goToStep: setCurrentStep, handleSubmit,
         basicInfo, setBasicInfo,
-        wings, handleOpenAddWing, handleDeleteWing, handleEditWing,
+        wings, handleOpenAddWing, handleDeleteWing, handleEditWing, handleDuplicateWing,
         showWingModal, setShowWingModal, handleSaveWing,
         wingForm, setWingForm, currentWingFloors,
         floorInput, setFloorInput, editingFloorIndex,
