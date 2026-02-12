@@ -226,11 +226,17 @@ export default function DocumentsTab({ documents, projectId, onRefresh }) {
                             className="w-full h-96 border-0"
                             title="PDF Preview"
                         />
-                    ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(previewModal.fileType) ? (
+                    ) : ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(previewModal.fileType) ? (
                         <img
                             src={previewModal.fileUrl || "/placeholder.svg"}
                             alt="Document preview"
                             className="max-w-full max-h-96 object-contain"
+                        />
+                    ) : ["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(previewModal.fileType) ? (
+                        <iframe
+                            src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewModal.fileUrl)}&embedded=true`}
+                            className="w-full h-96 border-0"
+                            title="Office Document Preview"
                         />
                     ) : (
                         <div className="text-center">
